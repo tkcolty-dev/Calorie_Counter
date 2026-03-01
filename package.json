@@ -1,0 +1,31 @@
+{
+  "name": "bitewise",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "concurrently \"node --watch server/index.js\" \"npm run dev --prefix client\"",
+    "build": "npm run build --prefix client",
+    "install:all": "npm install && npm install --prefix client",
+    "migrate": "node-pg-migrate up --migrations-dir server/migrations --database-url-var DATABASE_URL",
+    "migrate:down": "node-pg-migrate down --migrations-dir server/migrations --database-url-var DATABASE_URL",
+    "seed": "node server/seed/foods.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.2",
+    "node-pg-migrate": "^7.9.1",
+    "pg": "^8.13.1",
+    "web-push": "^3.6.7"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

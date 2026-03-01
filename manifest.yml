@@ -1,0 +1,12 @@
+applications:
+  - name: bitewise
+    memory: 512M
+    buildpacks:
+      - nodejs_buildpack
+    command: node server/start.js
+    env:
+      NODE_ENV: production
+      JWT_SECRET: 4b41540ef8564b789b1cb7e1072ef83ab18e92aa7c83bacfb5f5a0d1a6940dff
+    services:
+      - calorie-counter-db
+      - calorie-counter-ai
