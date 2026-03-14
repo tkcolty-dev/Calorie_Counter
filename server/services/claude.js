@@ -188,6 +188,7 @@ async function getSuggestions({ meal_type, remainingCalories, mealBudget, prefer
   const dietaryPrefs = preferences.filter(p => p.preference_type === 'dietary').map(p => p.value);
   const favorites = preferences.filter(p => p.preference_type === 'favorite').map(p => p.value);
   const dislikes = preferences.filter(p => p.preference_type === 'dislike').map(p => p.value);
+  const allergies = preferences.filter(p => p.preference_type === 'allergy').map(p => p.value);
 
   const mealsDescription = todaysMeals.length > 0
     ? todaysMeals.map(m => `${m.name} (${m.calories} cal) for ${m.meal_type}`).join(', ')
@@ -195,6 +196,7 @@ async function getSuggestions({ meal_type, remainingCalories, mealBudget, prefer
 
   const prompt = `Suggest 3 meal options for ${meal_type}.
 Budget: ${mealBudget} calories for this meal, ${remainingCalories} calories remaining for the day.
+${allergies.length > 0 ? `**ALLERGIES (CRITICAL - NEVER include foods containing these): ${allergies.join(', ')}**` : ''}
 ${cuisinePrefs.length > 0 ? `Cuisine preferences: ${cuisinePrefs.join(', ')}` : ''}
 ${dietaryPrefs.length > 0 ? `Dietary requirements: ${dietaryPrefs.join(', ')}` : ''}
 ${favorites.length > 0 ? `Favorite foods: ${favorites.join(', ')}` : ''}
@@ -217,12 +219,13 @@ Return ONLY a JSON array with exactly 3 objects, each having: name (string), des
   return JSON.parse(jsonMatch[0]);
 }
 
-function buildChatPrompt({ goals, todaysMeals, remainingCalories, preferences, plannedMeals, clientDate, clientHour, foodReference, sharedUsers }) {
+function buildChatPrompt({ goals, todaysMeals, remainingCalories, preferences, plannedMeals, clientDate, clientHour, foodReference, sharedUsers, weightData }) {
   const cuisinePrefs = preferences.filter(p => p.preference_type === 'cuisine').map(p => p.value);
   const dietaryPrefs = preferences.filter(p => p.preference_type === 'dietary').map(p => p.value);
   const favorites = preferences.filter(p => p.preference_type === 'favorite').map(p => p.value);
   const dislikes = preferences.filter(p => p.preference_type === 'dislike').map(p => p.value);
   const usualMeals = preferences.filter(p => p.preference_type === 'usual_meal').map(p => p.value);
+  const allergies = preferences.filter(p => p.preference_type === 'allergy').map(p => p.value);
 
   const mealsDescription = todaysMeals.length > 0
     ? todaysMeals.map(m => `${m.name} (${m.calories} cal) for ${m.meal_type}`).join(', ')
@@ -247,11 +250,13 @@ User context:
 - Calories remaining today: ${remainingCalories} cal
 - Already ate today: ${mealsDescription}
 - Planned meals (upcoming): ${plannedDescription}
+${allergies.length > 0 ? `- **ALLERGIES (CRITICAL - NEVER suggest foods containing these, the user could have a severe allergic reaction): ${allergies.join(', ')}**` : ''}
 ${cuisinePrefs.length > 0 ? `- Cuisine preferences: ${cuisinePrefs.join(', ')}` : ''}
 ${dietaryPrefs.length > 0 ? `- Dietary requirements: ${dietaryPrefs.join(', ')}` : ''}
 ${favorites.length > 0 ? `- Favorite foods: ${favorites.join(', ')}` : ''}
 ${dislikes.length > 0 ? `- Dislikes (avoid these): ${dislikes.join(', ')}` : ''}
 ${usualMeals.length > 0 ? `- Usual meals:\n${usualMeals.map(m => `  * ${m}`).join('\n')}` : ''}
+${weightData && weightData.currentWeight ? `- Current weight: ${weightData.currentWeight} lbs${weightData.startWeight ? ` (started at ${weightData.startWeight} lbs, ${weightData.totalChange > 0 ? 'gained' : 'lost'} ${Math.abs(weightData.totalChange).toFixed(1)} lbs)` : ''}${goals.target_weight_lbs ? `, target: ${goals.target_weight_lbs} lbs` : ''}` : ''}
 
 You can suggest meals in two ways:
 
@@ -275,7 +280,9 @@ When the user tells you they like or dislike a food (e.g. "I like Cheerios", "I 
 {"type": "favorite", "value": "Cheerios"}
 \`\`\`
 
-Use type "favorite" for likes and "dislike" for dislikes. Acknowledge that you've remembered it. Use the simple food name as the value (e.g. "Cheerios" not "Cheerios cereal for breakfast").
+Use type "favorite" for likes, "dislike" for dislikes, and "allergy" for allergies. If the user mentions they are allergic to something, ALWAYS save it as an allergy. Acknowledge that you've remembered it. Use the simple food/allergen name as the value (e.g. "Cheerios" not "Cheerios cereal for breakfast", "Peanuts" not "peanut allergy").
+
+IMPORTANT: Your memory of the user's preferences comes ONLY from the saved preferences listed above in the user context section — NOT from chat history. When the user tells you ANYTHING about their food preferences, allergies, likes, dislikes, or usual meals, you MUST immediately save it with a preference block. This ensures their preferences persist permanently across all devices and conversations, even if chat history is cleared. Be proactive — if they mention they love something or hate something in passing, save it.
 
 When the user defines a usual/regular meal (e.g. "my usual breakfast is oatmeal and eggs", "I always have a turkey sandwich for lunch"), save it with type "usual_meal":
 
@@ -296,6 +303,8 @@ When the user asks "what should I eat?" or similar, consider:
 Be specific with a concrete suggestion and include a meal block so they can log it with one tap.
 
 Keep responses concise and conversational. You can suggest multiple meals in one response. Always respect the user's calorie budget and preferences.
+${allergies.length > 0 ? `
+ALLERGY SAFETY: The user has the following allergies: ${allergies.join(', ')}. You MUST NEVER suggest any food that contains these allergens. This includes hidden ingredients (e.g. peanut oil, whey protein for dairy, etc.). If the user asks about a food that contains an allergen, warn them. This is a safety-critical requirement.` : ''}
 
 IMPORTANT: When suggesting serving sizes, always use full servings or half servings (e.g. "1 cup", "2 eggs", "1/2 cup", "1.5 servings"). Never suggest odd fractions like 0.7 cups or 1.3 servings. Keep portions practical and realistic.
 

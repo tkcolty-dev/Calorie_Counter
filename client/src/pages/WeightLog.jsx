@@ -50,9 +50,60 @@ export default function WeightLog() {
 
   const targetWeight = goals?.target_weight_lbs ? parseFloat(goals.target_weight_lbs) : undefined;
 
+  // Compute progress stats
+  const sortedByDate = [...entries].sort((a, b) => {
+    const da = typeof a.logged_date === 'string' ? a.logged_date.split('T')[0] : a.logged_date;
+    const db = typeof b.logged_date === 'string' ? b.logged_date.split('T')[0] : b.logged_date;
+    return da.localeCompare(db);
+  });
+  const startWeight = sortedByDate.length > 0 ? parseFloat(sortedByDate[0].weight_lbs) : null;
+  const currentWeight = sortedByDate.length > 0 ? parseFloat(sortedByDate[sortedByDate.length - 1].weight_lbs) : null;
+  const totalChange = startWeight != null && currentWeight != null ? currentWeight - startWeight : null;
+  const toTarget = targetWeight && currentWeight != null ? currentWeight - targetWeight : null;
+
   return (
     <div>
       <BackHeader title="Weight Log" subtitle="Track your weight over time" />
+
+      {sortedByDate.length >= 2 && (
+        <div className="card" style={{ marginBottom: '1rem' }}>
+          <h2 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.75rem' }}>Progress</h2>
+          <div style={{ display: 'grid', gridTemplateColumns: targetWeight ? 'repeat(3, 1fr)' : 'repeat(2, 1fr)', gap: '0.75rem', textAlign: 'center' }}>
+            <div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginBottom: 2 }}>Starting</div>
+              <div style={{ fontSize: '1.25rem', fontWeight: 700 }}>{startWeight} <span style={{ fontSize: '0.75rem', fontWeight: 400 }}>lbs</span></div>
+            </div>
+            <div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginBottom: 2 }}>Change</div>
+              <div style={{
+                fontSize: '1.25rem',
+                fontWeight: 700,
+                color: totalChange < 0 ? 'var(--color-success, #16a34a)' : totalChange > 0 ? 'var(--color-danger, #dc2626)' : 'var(--color-text)',
+              }}>
+                {totalChange > 0 ? '+' : ''}{totalChange.toFixed(1)} <span style={{ fontSize: '0.75rem', fontWeight: 400 }}>lbs</span>
+              </div>
+              <div style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)' }}>
+                {totalChange < 0 ? `${Math.abs(totalChange).toFixed(1)} lbs lost` : totalChange > 0 ? `${totalChange.toFixed(1)} lbs gained` : 'No change'}
+              </div>
+            </div>
+            {targetWeight && (
+              <div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginBottom: 2 }}>To Goal</div>
+                <div style={{
+                  fontSize: '1.25rem',
+                  fontWeight: 700,
+                  color: toTarget <= 0 ? 'var(--color-success, #16a34a)' : 'var(--color-text-secondary)',
+                }}>
+                  {toTarget <= 0 ? 'Reached!' : `${toTarget.toFixed(1)}`} {toTarget > 0 && <span style={{ fontSize: '0.75rem', fontWeight: 400 }}>lbs left</span>}
+                </div>
+                <div style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)' }}>
+                  Target: {targetWeight} lbs
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="card" style={{ marginBottom: '1rem' }}>
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>

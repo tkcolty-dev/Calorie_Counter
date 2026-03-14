@@ -10,6 +10,7 @@ const typeLabels = {
   dietary: 'Dietary',
   dislike: 'Dislikes',
   usual_meal: 'Usual Meals',
+  allergy: 'Allergies',
 };
 
 const typeColors = {
@@ -18,12 +19,18 @@ const typeColors = {
   favorite: '#f59e0b',
   dislike: '#dc2626',
   usual_meal: '#8b5cf6',
+  allergy: '#e11d48',
 };
 
 const QUICK_FAVORITES = [
   'Chicken', 'Rice', 'Pizza', 'Tacos', 'Pasta', 'Eggs', 'Sandwich', 'Burgers',
   'Goldfish Crackers', 'Chips', 'Popcorn', 'Apple', 'Banana', 'Yogurt',
   'Mac & Cheese', 'Grilled Cheese', 'Hot Dog', 'Salad', 'Soup', 'Cereal',
+];
+
+const COMMON_ALLERGIES = [
+  'Peanuts', 'Tree Nuts', 'Milk/Dairy', 'Eggs', 'Wheat/Gluten', 'Soy',
+  'Fish', 'Shellfish', 'Sesame',
 ];
 
 export default function Preferences() {
@@ -114,6 +121,31 @@ export default function Preferences() {
         </div>
       </div>
 
+      <div className="card" style={{ marginBottom: '1rem', borderLeft: '3px solid #e11d48' }}>
+        <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: 4, color: '#e11d48' }}>
+          Allergies
+        </label>
+        <p style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginBottom: 8 }}>
+          The AI will never suggest foods containing your allergens.
+        </p>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.375rem' }}>
+          {COMMON_ALLERGIES.filter(a => {
+            const allergies = grouped.allergy || [];
+            return !allergies.some(p => p.value.toLowerCase() === a.toLowerCase());
+          }).map(allergy => (
+            <button
+              key={allergy}
+              className="btn btn-secondary"
+              style={{ fontSize: '0.8rem', padding: '0.3rem 0.7rem', borderRadius: 20, borderColor: '#e11d4830' }}
+              onClick={() => addPref.mutate({ preference_type: 'allergy', value: allergy })}
+              disabled={addPref.isPending}
+            >
+              + {allergy}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <form onSubmit={handleSubmit} className="card" style={{ marginBottom: '1.5rem' }}>
         {error && <div className="error-message">{error}</div>}
 
@@ -125,6 +157,7 @@ export default function Preferences() {
               <option value="dietary">Dietary</option>
               <option value="favorite">Favorite Food</option>
               <option value="dislike">Dislike</option>
+              <option value="allergy">Allergy</option>
             </select>
           </div>
 
@@ -135,7 +168,7 @@ export default function Preferences() {
               type="text"
               value={value}
               onChange={(e) => setValue(e.target.value)}
-              placeholder={type === 'cuisine' ? 'e.g. Italian, Mexican' : type === 'dietary' ? 'e.g. vegetarian, gluten-free' : type === 'favorite' ? 'e.g. sushi, pizza' : 'e.g. mushrooms, liver'}
+              placeholder={type === 'cuisine' ? 'e.g. Italian, Mexican' : type === 'dietary' ? 'e.g. vegetarian, gluten-free' : type === 'favorite' ? 'e.g. sushi, pizza' : type === 'allergy' ? 'e.g. peanuts, shellfish' : 'e.g. mushrooms, liver'}
               required
             />
           </div>

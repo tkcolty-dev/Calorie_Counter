@@ -21,7 +21,7 @@ router.post('/', async (req, res) => {
     const clientDate = today || new Date().toISOString().split('T')[0];
 
     // Gather user context
-    const [goalsResult, mealsResult, prefsResult, plannedResult, sharesResult] = await Promise.all([
+    const [goalsResult, mealsResult, prefsResult, plannedResult, sharesResult, weightResult] = await Promise.all([
       pool.query('SELECT * FROM calorie_goals WHERE user_id = $1', [req.userId]),
       pool.query(
         `SELECT meal_type, name, calories FROM meals
@@ -47,6 +47,7 @@ router.post('/', async (req, res) => {
          WHERE (s.owner_id = $1 OR s.viewer_id = $1) AND ss.status = 'accepted'`,
         [req.userId]
       ),
+      pool.query('SELECT weight_lbs, logged_date FROM weight_log WHERE user_id = $1 ORDER BY logged_date ASC LIMIT 90', [req.userId]),
     ]);
 
     const goals = goalsResult.rows[0] || { daily_total: 2000 };
@@ -56,6 +57,15 @@ router.post('/', async (req, res) => {
     const preferences = prefsResult.rows;
     const plannedMeals = plannedResult.rows;
     const sharedUsers = sharesResult.rows;
+
+    // Build weight summary for AI context
+    let weightData = null;
+    const weightRows = weightResult.rows;
+    if (weightRows.length > 0) {
+      const startWeight = parseFloat(weightRows[0].weight_lbs);
+      const currentWeight = parseFloat(weightRows[weightRows.length - 1].weight_lbs);
+      weightData = { startWeight, currentWeight, totalChange: currentWeight - startWeight, entries: weightRows.length };
+    }
 
     // Look up calorie data for foods mentioned in the message
     const foodWords = message.toLowerCase().replace(/[^a-z\s]/g, '').split(/\s+/).filter(w => w.length > 2);
@@ -129,6 +139,7 @@ router.post('/', async (req, res) => {
       clientDate,
       foodReference,
       sharedUsers,
+      weightData,
     });
 
     if (!reply) {
@@ -162,7 +173,7 @@ router.post('/', async (req, res) => {
     while ((prefMatch = prefRegex.exec(reply)) !== null) {
       try {
         const pref = JSON.parse(prefMatch[1].trim());
-        if (pref.type && pref.value && ['favorite', 'dislike', 'usual_meal'].includes(pref.type)) {
+        if (pref.type && pref.value && ['favorite', 'dislike', 'usual_meal', 'allergy'].includes(pref.type)) {
           // For usual_meal, match on meal type prefix (e.g. "breakfast:")
           const matchQuery = pref.type === 'usual_meal'
             ? 'SELECT id FROM food_preferences WHERE user_id = $1 AND preference_type = $2 AND LOWER(value) LIKE LOWER($3)'
@@ -229,7 +240,7 @@ router.post('/', async (req, res) => {
     reply = reply.replace(/```preference\s*\n([\s\S]*?)```\s*/g, (_, jsonStr) => {
       try {
         const p = JSON.parse(jsonStr.trim());
-        const label = p.type === 'dislike' ? 'Dislike' : p.type === 'usual_meal' ? 'Usual meal' : 'Favorite';
+        const label = p.type === 'dislike' ? 'Dislike' : p.type === 'usual_meal' ? 'Usual meal' : p.type === 'allergy' ? 'Allergy' : 'Favorite';
         return `**${label}:** ${p.value}\n`;
       } catch { return ''; }
     }).trim();
@@ -257,7 +268,7 @@ async function gatherChatContext(userId, message, today) {
   const searches = [...searchTerms].slice(0, 3);
 
   // Run DB context + food searches all in parallel
-  const [goalsResult, mealsResult, prefsResult, plannedResult, sharesResult, localResults, offResults] = await Promise.all([
+  const [goalsResult, mealsResult, prefsResult, plannedResult, sharesResult, weightResult, localResults, offResults] = await Promise.all([
     pool.query('SELECT * FROM calorie_goals WHERE user_id = $1', [userId]),
     pool.query('SELECT meal_type, name, calories FROM meals WHERE user_id = $1 AND logged_at::date = $2::date', [userId, clientDate]),
     pool.query('SELECT preference_type, value FROM food_preferences WHERE user_id = $1', [userId]),
@@ -267,6 +278,7 @@ async function gatherChatContext(userId, message, today) {
        JOIN share_status ss ON ss.share_id = s.id
        JOIN users u ON u.id = CASE WHEN s.owner_id = $1 THEN s.viewer_id ELSE s.owner_id END
        WHERE (s.owner_id = $1 OR s.viewer_id = $1) AND ss.status = 'accepted'`, [userId]),
+    pool.query('SELECT weight_lbs, logged_date FROM weight_log WHERE user_id = $1 ORDER BY logged_date ASC LIMIT 90', [userId]),
     Promise.all(searches.map(t => searchLocalDB(t).catch(() => []))),
     Promise.all(searches.map(t => searchOpenFoodFacts(t).catch(() => []))),
   ]);
@@ -300,7 +312,21 @@ async function gatherChatContext(userId, message, today) {
   }
   foodReference = foodReference.slice(0, 20);
 
-  return { goals, todaysMeals, remainingCalories, preferences: prefsResult.rows, plannedMeals: plannedResult.rows, clientDate, foodReference, sharedUsers };
+  // Build weight summary for AI context
+  let weightData = null;
+  const weightRows = weightResult.rows;
+  if (weightRows.length > 0) {
+    const startWeight = parseFloat(weightRows[0].weight_lbs);
+    const currentWeight = parseFloat(weightRows[weightRows.length - 1].weight_lbs);
+    weightData = {
+      startWeight,
+      currentWeight,
+      totalChange: currentWeight - startWeight,
+      entries: weightRows.length,
+    };
+  }
+
+  return { goals, todaysMeals, remainingCalories, preferences: prefsResult.rows, plannedMeals: plannedResult.rows, clientDate, foodReference, sharedUsers, weightData };
 }
 
 // Post-process AI reply: save preferences, planned meals, resolve for_user
