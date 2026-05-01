@@ -41,13 +41,14 @@ router.get('/', async (req, res) => {
 // Grant access to a user
 router.post('/', async (req, res) => {
   try {
-    const { viewer_username } = req.body;
+    let { viewer_username } = req.body;
     if (!viewer_username) {
       return res.status(400).json({ error: 'viewer_username is required' });
     }
+    viewer_username = String(viewer_username).trim();
 
     const userResult = await pool.query(
-      'SELECT id FROM users WHERE username = $1',
+      'SELECT id FROM users WHERE LOWER(TRIM(username)) = LOWER(TRIM($1))',
       [viewer_username]
     );
     if (userResult.rows.length === 0) {

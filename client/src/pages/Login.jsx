@@ -15,7 +15,7 @@ export default function Login() {
     setError('');
     setLoading(true);
     try {
-      await login(username, password);
+      await login(username.trim(), password);
       navigate('/');
     } catch (err) {
       setError(err.response?.data?.error || 'Login failed');
@@ -43,9 +43,15 @@ export default function Login() {
             <label htmlFor="username">Username</label>
             <input
               id="username"
+              name="username"
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              autoComplete="username"
+              inputMode="text"
               required
             />
           </div>
@@ -54,9 +60,14 @@ export default function Login() {
             <label htmlFor="password">Password</label>
             <input
               id="password"
+              name="password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              autoComplete="current-password"
               required
             />
           </div>

@@ -38,9 +38,13 @@ router.get('/captcha', (req, res) => {
 
 router.post('/register', async (req, res) => {
   try {
-    const { username, password, captchaAnswer, captchaToken } = req.body;
+    let { username, password, captchaAnswer, captchaToken } = req.body;
     if (!username || !password) {
       return res.status(400).json({ error: 'Username and password are required' });
+    }
+    username = String(username).trim();
+    if (!username) {
+      return res.status(400).json({ error: 'Username is required' });
     }
     if (!captchaAnswer || !captchaToken) {
       return res.status(400).json({ error: 'CAPTCHA is required' });
@@ -56,7 +60,7 @@ router.post('/register', async (req, res) => {
     }
 
     const existing = await pool.query(
-      'SELECT id FROM users WHERE username = $1',
+      'SELECT id FROM users WHERE LOWER(TRIM(username)) = LOWER(TRIM($1))',
       [username]
     );
     if (existing.rows.length > 0) {
@@ -87,13 +91,14 @@ router.post('/register', async (req, res) => {
 
 router.post('/login', async (req, res) => {
   try {
-    const { username, password } = req.body;
+    let { username, password } = req.body;
     if (!username || !password) {
       return res.status(400).json({ error: 'Username and password are required' });
     }
+    username = String(username).trim();
 
     const result = await pool.query(
-      'SELECT id, username, password_hash, onboarding_complete, created_at FROM users WHERE username = $1',
+      'SELECT id, username, password_hash, onboarding_complete, created_at FROM users WHERE LOWER(TRIM(username)) = LOWER(TRIM($1))',
       [username]
     );
     if (result.rows.length === 0) {

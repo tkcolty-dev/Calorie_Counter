@@ -182,6 +182,9 @@ export default function Dashboard() {
         <CalorieBudgetBar consumed={totalCalories} goal={dailyGoal} macros={macroTotals} macroGoals={macroGoals} />
       </div>
 
+      {/* Pending tasks */}
+      <DashboardTasks />
+
       {/* Quick actions toggle + grid */}
       <button
         className="quick-actions-toggle"
@@ -365,6 +368,70 @@ export default function Dashboard() {
           </div>
         </CollapsibleSection>
       )}
+    </div>
+  );
+}
+
+function DashboardTasks() {
+  const queryClient = useQueryClient();
+  const { data } = useQuery({
+    queryKey: ['tasks-pending'],
+    queryFn: () => api.get('/tasks?status=pending').then(r => r.data),
+  });
+
+  const toggleComplete = useMutation({
+    mutationFn: (id) => api.patch(`/tasks/${id}/complete`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['tasks-pending'] });
+    },
+  });
+
+  const tasks = data?.tasks || [];
+  if (tasks.length === 0) return null;
+
+  return (
+    <div style={{ marginBottom: '0.75rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+        <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-secondary)' }}>
+          Tasks ({tasks.length})
+        </span>
+        <Link to="/tasks" style={{ fontSize: '0.75rem' }}>View all</Link>
+      </div>
+      {tasks.slice(0, 3).map(task => {
+        const isOverdue = new Date(task.due_at) < new Date();
+        const time = new Date(task.due_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+        return (
+          <div
+            key={task.id}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              padding: '0.4rem 0.6rem',
+              background: 'var(--color-surface)',
+              borderRadius: 8,
+              marginBottom: '0.3rem',
+              borderLeft: `3px solid ${isOverdue ? 'var(--color-danger)' : 'var(--color-primary)'}`,
+            }}
+          >
+            <button
+              onClick={() => toggleComplete.mutate(task.id)}
+              style={{
+                flexShrink: 0, width: 20, height: 20, borderRadius: 5,
+                border: '2px solid var(--color-border)', background: 'transparent',
+                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}
+            />
+            <span style={{ flex: 1, fontSize: '0.85rem', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {task.title}
+            </span>
+            <span style={{ fontSize: '0.7rem', color: isOverdue ? 'var(--color-danger)' : 'var(--color-text-secondary)', flexShrink: 0 }}>
+              {time}
+            </span>
+          </div>
+        );
+      })}
     </div>
   );
 }

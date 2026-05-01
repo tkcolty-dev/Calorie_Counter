@@ -1,18 +1,29 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import api from '../api/client';
+import api, { setAuthToken } from '../api/client';
 
 const AuthContext = createContext(null);
+
+function safeGet(key) {
+  try { return localStorage.getItem(key); } catch { return null; }
+}
+function safeSet(key, val) {
+  try { localStorage.setItem(key, val); } catch { /* private mode / quota — fall back to in-memory token in api/client */ }
+}
+function safeRemove(key) {
+  try { localStorage.removeItem(key); } catch { /* ignore */ }
+}
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
+    const token = safeGet('token');
     if (token) {
+      setAuthToken(token);
       api.get('/auth/me')
         .then(res => setUser(res.data.user))
-        .catch(() => localStorage.removeItem('token'))
+        .catch(() => { safeRemove('token'); setAuthToken(null); })
         .finally(() => setLoading(false));
     } else {
       setLoading(false);
@@ -21,14 +32,16 @@ export function AuthProvider({ children }) {
 
   const login = async (username, password) => {
     const res = await api.post('/auth/login', { username, password });
-    localStorage.setItem('token', res.data.token);
+    safeSet('token', res.data.token);
+    setAuthToken(res.data.token);
     setUser(res.data.user);
     return res.data;
   };
 
   const register = async (username, password, captchaAnswer, captchaToken) => {
     const res = await api.post('/auth/register', { username, password, captchaAnswer, captchaToken });
-    localStorage.setItem('token', res.data.token);
+    safeSet('token', res.data.token);
+    setAuthToken(res.data.token);
     setUser(res.data.user);
     return res.data;
   };
@@ -39,8 +52,9 @@ export function AuthProvider({ children }) {
   };
 
   const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('chat-prefill');
+    safeRemove('token');
+    safeRemove('chat-prefill');
+    setAuthToken(null);
     setUser(null);
   };
 

@@ -30,7 +30,7 @@ export default function Register() {
     setError('');
     setLoading(true);
     try {
-      await register(username, password, captchaAnswer, captcha?.token);
+      await register(username.trim(), password, captchaAnswer, captcha?.token);
       navigate('/');
     } catch (err) {
       setError(err.response?.data?.error || 'Registration failed');
@@ -59,9 +59,15 @@ export default function Register() {
             <label htmlFor="username">Username</label>
             <input
               id="username"
+              name="username"
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              autoComplete="username"
+              inputMode="text"
               required
             />
           </div>
@@ -70,9 +76,14 @@ export default function Register() {
             <label htmlFor="password">Password</label>
             <input
               id="password"
+              name="password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              autoComplete="new-password"
               required
               minLength={6}
             />

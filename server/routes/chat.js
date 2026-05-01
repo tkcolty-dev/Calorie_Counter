@@ -236,6 +236,29 @@ router.post('/', async (req, res) => {
       } catch {}
     }
 
+    // Parse and save any task blocks from the AI response
+    const taskRegex = /```task\s*\n([\s\S]*?)```/g;
+    let taskMatch;
+    const savedTasks = [];
+    while ((taskMatch = taskRegex.exec(reply)) !== null) {
+      try {
+        const task = JSON.parse(taskMatch[1].trim());
+        if (task.title && task.due_at) {
+          let taskTargetUserId = req.userId;
+          if (task.for_user) {
+            const target = sharedUsers.find(u => u.username.toLowerCase() === task.for_user.toLowerCase());
+            if (target) taskTargetUserId = target.user_id;
+          }
+          const inserted = await pool.query(
+            `INSERT INTO tasks (user_id, created_by, title, note, due_at)
+             VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+            [taskTargetUserId, req.userId, task.title, task.note || null, task.due_at]
+          );
+          savedTasks.push(inserted.rows[0]);
+        }
+      } catch {}
+    }
+
     // Replace preference blocks with readable text
     reply = reply.replace(/```preference\s*\n([\s\S]*?)```\s*/g, (_, jsonStr) => {
       try {
@@ -245,8 +268,9 @@ router.post('/', async (req, res) => {
       } catch { return ''; }
     }).trim();
     reply = reply.replace(/```planned_meal\s*\n[\s\S]*?```\s*/g, '').trim();
+    reply = reply.replace(/```task\s*\n[\s\S]*?```\s*/g, '').trim();
 
-    res.json({ reply, learnedPreferences: learnedPrefs, savedPlans });
+    res.json({ reply, learnedPreferences: learnedPrefs, savedPlans, savedTasks });
   } catch (err) {
     console.error('Chat error:', err);
     res.status(500).json({ error: 'Failed to get AI response' });
@@ -398,6 +422,29 @@ async function postProcessReply(reply, userId, sharedUsers) {
     } catch {}
   }
 
+  // Save task blocks
+  const taskRegex = /```task\s*\n([\s\S]*?)```/g;
+  let taskMatch;
+  const savedTasks = [];
+  while ((taskMatch = taskRegex.exec(reply)) !== null) {
+    try {
+      const task = JSON.parse(taskMatch[1].trim());
+      if (task.title && task.due_at) {
+        let taskTargetUserId = userId;
+        if (task.for_user) {
+          const target = sharedUsers.find(u => u.username.toLowerCase() === task.for_user.toLowerCase());
+          if (target) taskTargetUserId = target.user_id;
+        }
+        const inserted = await pool.query(
+          `INSERT INTO tasks (user_id, created_by, title, note, due_at)
+           VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+          [taskTargetUserId, userId, task.title, task.note || null, task.due_at]
+        );
+        savedTasks.push(inserted.rows[0]);
+      }
+    } catch {}
+  }
+
   // Replace preference blocks with readable text
   reply = reply.replace(/```preference\s*\n([\s\S]*?)```\s*/g, (_, jsonStr) => {
     try {
@@ -407,8 +454,9 @@ async function postProcessReply(reply, userId, sharedUsers) {
     } catch { return ''; }
   }).trim();
   reply = reply.replace(/```planned_meal\s*\n[\s\S]*?```\s*/g, '').trim();
+  reply = reply.replace(/```task\s*\n[\s\S]*?```\s*/g, '').trim();
 
-  return { reply, learnedPreferences: learnedPrefs, savedPlans };
+  return { reply, learnedPreferences: learnedPrefs, savedPlans, savedTasks };
 }
 
 // Streaming chat endpoint

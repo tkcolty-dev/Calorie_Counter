@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../api/client';
@@ -9,13 +9,29 @@ import PhotoCapture from '../components/PhotoCapture';
 import VoiceLogger from '../components/VoiceLogger';
 import BackHeader from '../components/BackHeader';
 
+function nowLocalISO() {
+  const n = new Date();
+  return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}T${String(n.getHours()).padStart(2, '0')}:${String(n.getMinutes()).padStart(2, '0')}:00`;
+}
+
+function newItemId() {
+  return Math.random().toString(36).slice(2) + Date.now().toString(36);
+}
+
+function defaultMealTypeForNow() {
+  const h = new Date().getHours();
+  if (h >= 4 && h < 11) return 'breakfast';
+  if (h >= 11 && h < 15) return 'lunch';
+  if (h >= 17 && h < 22) return 'dinner';
+  return 'snack';
+}
+
 export default function MealLog() {
-  const [mealType, setMealType] = useState('lunch');
+  const [mealType, setMealType] = useState(defaultMealTypeForNow);
+  const [items, setItems] = useState([]);
+  // Per-item form state
   const [name, setName] = useState('');
   const [calories, setCalories] = useState('');
-  const [notes, setNotes] = useState('');
-  const [saveAsFavorite, setSaveAsFavorite] = useState(false);
-  const [error, setError] = useState('');
   const [calorieHints, setCalorieHints] = useState([]);
   const [quantity, setQuantity] = useState(1);
   const [baseCal, setBaseCal] = useState(null);
@@ -27,15 +43,22 @@ export default function MealLog() {
   const [baseCarbs, setBaseCarbs] = useState(null);
   const [baseFat, setBaseFat] = useState(null);
   const [showMacros, setShowMacros] = useState(false);
-  const macrosRef = useRef(null);
+  const [justAddedId, setJustAddedId] = useState(null);
+  // Per-meal state
+  const [notes, setNotes] = useState('');
+  const [saveAsFavorite, setSaveAsFavorite] = useState(false);
+  const [error, setError] = useState('');
+  const [forUserIds, setForUserIds] = useState([]);
+  const [logForSelf, setLogForSelf] = useState(true);
+  // Modal state
   const [showTemplateBuilder, setShowTemplateBuilder] = useState(false);
   const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
   const [showPhotoCapture, setShowPhotoCapture] = useState(false);
   const [showVoiceLogger, setShowVoiceLogger] = useState(false);
-  const [forUserIds, setForUserIds] = useState([]);
-  const [logForSelf, setLogForSelf] = useState(true);
+
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const nameInputRef = useRef(null);
 
   // Debounced calorie lookup on name input
   useEffect(() => {
@@ -50,7 +73,7 @@ export default function MealLog() {
       } catch {
         setCalorieHints([]);
       }
-    }, 300);
+    }, 150);
     return () => clearTimeout(timer);
   }, [name]);
 
@@ -65,46 +88,92 @@ export default function MealLog() {
     staleTime: 1000 * 60 * 2,
   });
 
-  const sharedUsers = [];
-  const seenIds = new Set();
-  if (sharingData) {
-    for (const s of (sharingData.sharedWithMe || [])) {
-      if (s.status === 'accepted' && !seenIds.has(s.owner_id)) {
-        seenIds.add(s.owner_id);
-        sharedUsers.push({ userId: s.owner_id, username: s.owner_username });
+  const sharedUsers = useMemo(() => {
+    const out = [];
+    const seen = new Set();
+    if (sharingData) {
+      for (const s of (sharingData.sharedWithMe || [])) {
+        if (s.status === 'accepted' && !seen.has(s.owner_id)) {
+          seen.add(s.owner_id);
+          out.push({ userId: s.owner_id, username: s.owner_username });
+        }
+      }
+      for (const s of (sharingData.sharing || [])) {
+        if (s.status === 'accepted' && !seen.has(s.viewer_id)) {
+          seen.add(s.viewer_id);
+          out.push({ userId: s.viewer_id, username: s.viewer_username });
+        }
       }
     }
-    for (const s of (sharingData.sharing || [])) {
-      if (s.status === 'accepted' && !seenIds.has(s.viewer_id)) {
-        seenIds.add(s.viewer_id);
-        sharedUsers.push({ userId: s.viewer_id, username: s.viewer_username });
-      }
-    }
-  }
+    return out;
+  }, [sharingData]);
+
+  const totals = useMemo(() => items.reduce((acc, i) => ({
+    calories: acc.calories + (i.calories || 0),
+    protein_g: acc.protein_g + (i.protein_g || 0),
+    carbs_g:   acc.carbs_g   + (i.carbs_g   || 0),
+    fat_g:     acc.fat_g     + (i.fat_g     || 0),
+    anyMacros: acc.anyMacros || i.protein_g != null || i.carbs_g != null || i.fat_g != null,
+  }), { calories: 0, protein_g: 0, carbs_g: 0, fat_g: 0, anyMacros: false }), [items]);
 
   const createMeal = useMutation({
     mutationFn: async (data) => {
-      const { for_user_ids, log_for_self, ...rest } = data;
+      const { items: allItems, meal_type, notes: mealNotes, logged_at, for_user_ids, log_for_self } = data;
       const targets = [
         ...(log_for_self ? [undefined] : []),
         ...(for_user_ids || []),
       ];
-      const res = await Promise.all(targets.map(uid =>
-        api.post('/meals', { ...rest, for_user_id: uid })
-      ));
+      // Fire all meal POSTs in parallel — much faster for multi-item / multi-target logs.
+      const requests = [];
+      for (const target of targets) {
+        for (let i = 0; i < allItems.length; i++) {
+          const item = allItems[i];
+          requests.push(api.post('/meals', {
+            meal_type,
+            name: item.name,
+            calories: item.calories,
+            notes: i === 0 ? mealNotes : undefined,
+            logged_at,
+            protein_g: item.protein_g ?? undefined,
+            carbs_g: item.carbs_g ?? undefined,
+            fat_g: item.fat_g ?? undefined,
+            for_user_id: target,
+          }));
+        }
+      }
+      await Promise.all(requests);
       if (saveAsFavorite) {
-        await api.post('/custom-meals', {
-          name: data.name,
-          meal_type: data.meal_type,
-          calories: data.calories,
-          notes: data.notes,
-          protein_g: data.protein_g,
-          carbs_g: data.carbs_g,
-          fat_g: data.fat_g,
-        });
+        if (allItems.length > 1) {
+          const templateName = allItems.map(i => i.name).slice(0, 3).join(' + ') + (allItems.length > 3 ? ' + …' : '');
+          const totalCal = allItems.reduce((s, i) => s + i.calories, 0);
+          await api.post('/custom-meals', {
+            name: templateName,
+            meal_type,
+            calories: totalCal,
+            notes: mealNotes || null,
+            template_items: allItems.map(i => ({
+              name: i.name,
+              calories: i.calories,
+              protein_g: i.protein_g,
+              carbs_g: i.carbs_g,
+              fat_g: i.fat_g,
+            })),
+            is_template: true,
+          });
+        } else {
+          const only = allItems[0];
+          await api.post('/custom-meals', {
+            name: only.name,
+            meal_type,
+            calories: only.calories,
+            notes: mealNotes || null,
+            protein_g: only.protein_g,
+            carbs_g: only.carbs_g,
+            fat_g: only.fat_g,
+          });
+        }
         queryClient.invalidateQueries({ queryKey: ['custom-meals'] });
       }
-      return res[0];
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['meals'] });
@@ -117,16 +186,17 @@ export default function MealLog() {
 
   const quickLog = useMutation({
     mutationFn: async (meal) => {
-      const n = new Date();
-      const localISO = `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}T${String(n.getHours()).padStart(2, '0')}:${String(n.getMinutes()).padStart(2, '0')}:00`;
+      const localISO = nowLocalISO();
       if (meal.is_template && meal.template_items) {
-        // Log each template item separately
         for (const item of meal.template_items) {
           await api.post('/meals', {
             meal_type: meal.meal_type,
             name: item.name,
             calories: item.calories,
             logged_at: localISO,
+            protein_g: item.protein_g ?? undefined,
+            carbs_g: item.carbs_g ?? undefined,
+            fat_g: item.fat_g ?? undefined,
           });
         }
         return;
@@ -162,37 +232,106 @@ export default function MealLog() {
     if (food.protein_g != null || food.carbs_g != null || food.fat_g != null) setShowMacros(true);
   };
 
+  const resetItemForm = () => {
+    setName('');
+    setCalories('');
+    setProtein(''); setCarbs(''); setFat('');
+    setBaseCal(null); setBaseProtein(null); setBaseCarbs(null); setBaseFat(null);
+    setQuantity(1); setServingSize('');
+    setShowMacros(false);
+    setCalorieHints([]);
+  };
+
+  const buildItemFromForm = () => {
+    if (!name.trim() || !calories) return null;
+    return {
+      id: newItemId(),
+      name: name.trim(),
+      calories: parseInt(calories),
+      protein_g: protein ? parseFloat(protein) : null,
+      carbs_g: carbs ? parseFloat(carbs) : null,
+      fat_g: fat ? parseFloat(fat) : null,
+    };
+  };
+
+  const addItem = () => {
+    setError('');
+    const item = buildItemFromForm();
+    if (!item) {
+      setError('Item name and calories are required');
+      return;
+    }
+    setItems(prev => [...prev, item]);
+    setJustAddedId(item.id);
+    setTimeout(() => setJustAddedId(null), 700);
+    resetItemForm();
+    nameInputRef.current?.focus();
+  };
+
+  const removeItem = (id) => {
+    setItems(prev => prev.filter(i => i.id !== id));
+  };
+
+  // One-tap add from a food search result — no need to fill the form.
+  const quickAddFood = (food) => {
+    const item = {
+      id: newItemId(),
+      name: food.name,
+      calories: food.calories_per_serving,
+      protein_g: food.protein_g ?? null,
+      carbs_g: food.carbs_g ?? null,
+      fat_g: food.fat_g ?? null,
+    };
+    setItems(prev => [...prev, item]);
+    setJustAddedId(item.id);
+    setTimeout(() => setJustAddedId(null), 700);
+  };
+
+  const handleItemKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey && !e.metaKey && !e.ctrlKey) {
+      e.preventDefault();
+      addItem();
+    }
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     setError('');
-    if (!name.trim() || !calories) {
-      setError('Name and calories are required');
+    const allItems = [...items];
+    const pending = buildItemFromForm();
+    if (pending) allItems.push(pending);
+    if (allItems.length === 0) {
+      setError('Add at least one item to your meal');
       return;
     }
     if (!logForSelf && forUserIds.length === 0) {
       setError('Select at least one person to log for');
       return;
     }
-    // Send local datetime so logged_at::date matches user's local date
-    const now = new Date();
-    const localISO = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}T${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:00`;
     createMeal.mutate({
+      items: allItems,
       meal_type: mealType,
-      name: name.trim(),
-      calories: parseInt(calories),
       notes: notes.trim() || undefined,
-      logged_at: localISO,
-      protein_g: protein ? parseFloat(protein) : undefined,
-      carbs_g: carbs ? parseFloat(carbs) : undefined,
-      fat_g: fat ? parseFloat(fat) : undefined,
+      logged_at: nowLocalISO(),
       for_user_ids: forUserIds.map(id => parseInt(id)),
       log_for_self: logForSelf,
     });
   };
 
+  const submitLabel = (() => {
+    if (createMeal.isPending) return 'Logging…';
+    const pending = buildItemFromForm();
+    const count = items.length + (pending ? 1 : 0);
+    if (count === 0) return 'Log meal';
+    const targetCount = (logForSelf ? 1 : 0) + forUserIds.length;
+    const itemPart = count === 1 ? 'Log meal' : `Log meal · ${count} items`;
+    if (targetCount > 1) return `${itemPart} (×${targetCount})`;
+    return itemPart;
+  })();
+
   return (
     <div>
-      <BackHeader title="Log a Meal" subtitle="Search for a food or enter details manually" />
+      <BackHeader title="Log a Meal" subtitle="Add one or more items to this meal" />
 
       {customMeals.length > 0 && (
         <div style={{ marginBottom: '1rem' }}>
@@ -227,7 +366,7 @@ export default function MealLog() {
         <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: 6 }}>
           Quick search from food database
         </label>
-        <FoodSearch onSelect={handleFoodSelect} />
+        <FoodSearch onSelect={handleFoodSelect} onQuickAdd={quickAddFood} />
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem', marginTop: '0.75rem' }}>
           <button className="log-action-btn" onClick={() => setShowBarcodeScanner(true)}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 5V3h4"/><path d="M17 3h4v2"/><path d="M21 19v2h-4"/><path d="M7 21H3v-2"/><path d="M7 8v8"/><path d="M11 8v8"/><path d="M15 8v8"/><path d="M19 8v8"/></svg>
@@ -254,21 +393,17 @@ export default function MealLog() {
 
       {showPhotoCapture && (
         <PhotoCapture
-          onResults={(items) => {
-            // Log each detected item
-            const n = new Date();
-            const localISO = `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}T${String(n.getHours()).padStart(2, '0')}:${String(n.getMinutes()).padStart(2, '0')}:00`;
-            items.forEach(item => {
-              createMeal.mutate({
-                meal_type: mealType,
-                name: item.name,
-                calories: item.calories,
-                logged_at: localISO,
-                protein_g: item.protein_g || undefined,
-                carbs_g: item.carbs_g || undefined,
-                fat_g: item.fat_g || undefined,
-              });
-            });
+          onResults={(detected) => {
+            const newItems = detected.map(it => ({
+              id: newItemId(),
+              name: it.name,
+              calories: it.calories,
+              protein_g: it.protein_g ?? null,
+              carbs_g: it.carbs_g ?? null,
+              fat_g: it.fat_g ?? null,
+            }));
+            setItems(prev => [...prev, ...newItems]);
+            setShowPhotoCapture(false);
           }}
           onClose={() => setShowPhotoCapture(false)}
         />
@@ -292,7 +427,7 @@ export default function MealLog() {
         />
       )}
 
-      <form onSubmit={handleSubmit} className="card">
+      <form onSubmit={handleSubmit} className="card meal-log-card">
         {error && <div className="error-message">{error}</div>}
 
         <div className="form-group">
@@ -340,139 +475,186 @@ export default function MealLog() {
           </div>
         )}
 
-        <div className="form-group">
-          <label htmlFor="name">Food name</label>
-          <input
-            id="name"
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. Grilled chicken salad"
-            autoComplete="off"
-            required
-          />
-          {calorieHints.length > 0 && (
-            <div className="calorie-hint">
-              {calorieHints.map((food) => (
-                <button
-                  key={food.id}
-                  type="button"
-                  className="calorie-hint-item"
-                  onClick={() => {
-                    setName(food.name);
-                    setBaseCal(food.calories_per_serving);
-                    setServingSize(food.serving_size || '1 serving');
-                    setQuantity(1);
-                    setCalories(String(food.calories_per_serving));
-                    setCalorieHints([]);
-                  }}
+        {/* Items list */}
+        {items.length > 0 && (
+          <div className="meal-items-list">
+            <div className="meal-items-header">
+              <span>{items.length} item{items.length > 1 ? 's' : ''} in this meal</span>
+              <span className="meal-items-total-cal">{totals.calories} cal</span>
+            </div>
+            <div className="meal-items-rows">
+              {items.map((it) => (
+                <div
+                  key={it.id}
+                  className={`meal-item-row${justAddedId === it.id ? ' just-added' : ''}`}
                 >
-                  {food.name}{food.brand ? ` (${food.brand})` : ''}: ~{food.calories_per_serving} cal ({food.serving_size})
-                </button>
+                  <div className="meal-item-body">
+                    <div className="meal-item-name">{it.name}</div>
+                    <div className="meal-item-meta">
+                      {it.calories} cal
+                      {it.protein_g != null && ` · ${it.protein_g}g P`}
+                      {it.carbs_g != null && ` · ${it.carbs_g}g C`}
+                      {it.fat_g != null && ` · ${it.fat_g}g F`}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="meal-item-remove"
+                    onClick={() => removeItem(it.id)}
+                    aria-label={`Remove ${it.name}`}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                  </button>
+                </div>
               ))}
             </div>
-          )}
-        </div>
-
-        {baseCal !== null && (
-          <div className="form-group">
-            <label htmlFor="quantity">Quantity</label>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <input
-                id="quantity"
-                type="number"
-                value={quantity}
-                onChange={(e) => {
-                  const q = parseFloat(e.target.value) || 0;
-                  setQuantity(q);
-                  setCalories(String(Math.round(baseCal * q)));
-                  if (baseProtein != null) setProtein(String(Math.round(baseProtein * q * 10) / 10));
-                  if (baseCarbs != null) setCarbs(String(Math.round(baseCarbs * q * 10) / 10));
-                  if (baseFat != null) setFat(String(Math.round(baseFat * q * 10) / 10));
-                }}
-                min="0.25"
-                step="any"
-                style={{ width: '5rem' }}
-                required
-              />
-              <span style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>
-                x {servingSize} ({baseCal} cal each)
-              </span>
-            </div>
+            {totals.anyMacros && (
+              <div className="meal-items-totals">
+                Total: {totals.calories} cal
+                {totals.protein_g > 0 && ` · ${Math.round(totals.protein_g * 10) / 10}g P`}
+                {totals.carbs_g > 0   && ` · ${Math.round(totals.carbs_g   * 10) / 10}g C`}
+                {totals.fat_g > 0     && ` · ${Math.round(totals.fat_g     * 10) / 10}g F`}
+              </div>
+            )}
           </div>
         )}
 
-        <div className="form-group">
-          <label htmlFor="calories">Calories{baseCal !== null ? ' (auto-calculated)' : ''}</label>
-          <input
-            id="calories"
-            type="number"
-            value={calories}
-            onChange={(e) => {
-              setCalories(e.target.value);
-              if (baseCal !== null && parseFloat(e.target.value) > 0) {
-                setQuantity(parseFloat((parseFloat(e.target.value) / baseCal).toFixed(1)));
-              }
-            }}
-            placeholder="e.g. 450"
-            min="0"
-            required
-          />
-        </div>
-
-        <button
-          type="button"
-          onClick={() => setShowMacros(!showMacros)}
-          style={{
-            background: 'none',
-            border: 'none',
-            padding: '0.25rem 0',
-            fontSize: '0.85rem',
-            color: 'var(--color-primary)',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.375rem',
-            marginBottom: showMacros ? '0.25rem' : 0,
-          }}
-        >
-          <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: showMacros ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>
-            <polyline points="6 4 14 10 6 16" />
-          </svg>
-          {showMacros ? 'Close advanced' : 'Open advanced'}
-        </button>
-        <div
-          ref={macrosRef}
-          style={{
-            maxHeight: showMacros ? (macrosRef.current?.scrollHeight || 200) + 'px' : '0px',
-            overflow: 'hidden',
-            transition: 'max-height 0.25s ease',
-          }}
-        >
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem' }}>
-            <div className="form-group">
-              <label htmlFor="protein">Protein (g)</label>
-              <input id="protein" type="number" value={protein} onChange={(e) => setProtein(e.target.value)} placeholder="--" min="0" step="0.1" />
-            </div>
-            <div className="form-group">
-              <label htmlFor="carbs">Carbs (g)</label>
-              <input id="carbs" type="number" value={carbs} onChange={(e) => setCarbs(e.target.value)} placeholder="--" min="0" step="0.1" />
-            </div>
-            <div className="form-group">
-              <label htmlFor="fat">Fat (g)</label>
-              <input id="fat" type="number" value={fat} onChange={(e) => setFat(e.target.value)} placeholder="--" min="0" step="0.1" />
-            </div>
+        {/* Add an item form */}
+        <div className="meal-item-form">
+          <div className="meal-item-form-header">
+            {items.length > 0 ? 'Add another item' : 'Add an item'}
           </div>
+
           <div className="form-group">
-            <label htmlFor="notes">Notes (optional)</label>
-            <textarea
-              id="notes"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={2}
-              placeholder="e.g. With extra avocado"
+            <label htmlFor="name">Food name</label>
+            <input
+              ref={nameInputRef}
+              id="name"
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onKeyDown={handleItemKeyDown}
+              placeholder="e.g. Grilled chicken salad"
+              autoComplete="off"
+            />
+            {calorieHints.length > 0 && (
+              <div className="calorie-hint">
+                {calorieHints.map((food) => (
+                  <button
+                    key={food.id}
+                    type="button"
+                    className="calorie-hint-item"
+                    onClick={() => {
+                      handleFoodSelect(food);
+                      setCalorieHints([]);
+                    }}
+                  >
+                    {food.name}{food.brand ? ` (${food.brand})` : ''}: ~{food.calories_per_serving} cal ({food.serving_size})
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {baseCal !== null && (
+            <div className="form-group">
+              <label htmlFor="quantity">Quantity</label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <input
+                  id="quantity"
+                  type="number"
+                  value={quantity}
+                  onChange={(e) => {
+                    const q = parseFloat(e.target.value) || 0;
+                    setQuantity(q);
+                    setCalories(String(Math.round(baseCal * q)));
+                    if (baseProtein != null) setProtein(String(Math.round(baseProtein * q * 10) / 10));
+                    if (baseCarbs != null) setCarbs(String(Math.round(baseCarbs * q * 10) / 10));
+                    if (baseFat != null) setFat(String(Math.round(baseFat * q * 10) / 10));
+                  }}
+                  min="0.25"
+                  step="any"
+                  style={{ width: '5rem' }}
+                />
+                <span style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>
+                  × {servingSize} ({baseCal} cal each)
+                </span>
+              </div>
+            </div>
+          )}
+
+          <div className="form-group">
+            <label htmlFor="calories">Calories{baseCal !== null ? ' (auto-calculated)' : ''}</label>
+            <input
+              id="calories"
+              type="number"
+              value={calories}
+              onChange={(e) => {
+                setCalories(e.target.value);
+                if (baseCal !== null && parseFloat(e.target.value) > 0) {
+                  setQuantity(parseFloat((parseFloat(e.target.value) / baseCal).toFixed(1)));
+                }
+              }}
+              onKeyDown={handleItemKeyDown}
+              placeholder="e.g. 450"
+              min="0"
+              inputMode="numeric"
             />
           </div>
+
+          <button
+            type="button"
+            onClick={() => setShowMacros(!showMacros)}
+            className="meal-log-toggle"
+          >
+            <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: showMacros ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>
+              <polyline points="6 4 14 10 6 16" />
+            </svg>
+            {showMacros ? 'Hide macros' : 'Add macros'}
+          </button>
+
+          <div className={`meal-log-macros ${showMacros ? 'open' : ''}`}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem' }}>
+              <div className="form-group">
+                <label htmlFor="protein">Protein (g)</label>
+                <input id="protein" type="number" value={protein} onChange={(e) => setProtein(e.target.value)} placeholder="--" min="0" step="0.1" inputMode="decimal" />
+              </div>
+              <div className="form-group">
+                <label htmlFor="carbs">Carbs (g)</label>
+                <input id="carbs" type="number" value={carbs} onChange={(e) => setCarbs(e.target.value)} placeholder="--" min="0" step="0.1" inputMode="decimal" />
+              </div>
+              <div className="form-group">
+                <label htmlFor="fat">Fat (g)</label>
+                <input id="fat" type="number" value={fat} onChange={(e) => setFat(e.target.value)} placeholder="--" min="0" step="0.1" inputMode="decimal" />
+              </div>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            className="btn btn-secondary meal-add-item-btn"
+            onClick={addItem}
+            disabled={!name.trim() || !calories}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            Add another item
+          </button>
+        </div>
+
+        {/* Meal-level notes & favorite */}
+        <div className="form-group" style={{ marginTop: '0.75rem' }}>
+          <label htmlFor="notes">Notes (optional)</label>
+          <textarea
+            id="notes"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            rows={2}
+            placeholder="e.g. Lunch out with friends"
+          />
         </div>
 
         <div style={{ marginBottom: '0.75rem' }}>
@@ -483,7 +665,9 @@ export default function MealLog() {
               onChange={(e) => setSaveAsFavorite(e.target.checked)}
               style={{ width: 16, height: 16 }}
             />
-            Save as favorite meal
+            {items.length > 1 || (items.length === 1 && (name.trim() || calories))
+              ? 'Save this combo as a template'
+              : 'Save as favorite meal'}
           </label>
         </div>
 
@@ -494,7 +678,7 @@ export default function MealLog() {
             disabled={createMeal.isPending}
             style={{ flex: 1, padding: '0.625rem' }}
           >
-            {createMeal.isPending ? 'Logging...' : forUserIds.length > 0 && logForSelf ? `Log for me + ${forUserIds.length}` : forUserIds.length > 0 && !logForSelf ? `Log for ${forUserIds.length} other${forUserIds.length > 1 ? 's' : ''}` : 'Log Meal'}
+            {submitLabel}
           </button>
           <button
             type="button"

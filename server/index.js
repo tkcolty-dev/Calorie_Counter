@@ -22,7 +22,9 @@ const notificationsRoutes = require('./routes/notifications');
 const avatarsRoutes = require('./routes/avatars');
 const voiceLogRoutes = require('./routes/voice-log');
 const chatHistoryRoutes = require('./routes/chat-history');
+const tasksRoutes = require('./routes/tasks');
 const { startMealReminders } = require('./services/mealReminder');
+const { startTaskReminders } = require('./services/taskReminder');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -50,6 +52,7 @@ app.use('/api/notifications', notificationsRoutes);
 app.use('/api/avatars', avatarsRoutes);
 app.use('/api/voice-log', voiceLogRoutes);
 app.use('/api/chat-history', chatHistoryRoutes);
+app.use('/api/tasks', tasksRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -67,4 +70,5 @@ if (process.env.NODE_ENV === 'production') {
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   startMealReminders();
+  startTaskReminders();
 });

@@ -3,3 +3,7 @@ client/node_modules/
 client/dist/
 .env
 *.log
+
+# Dev screenshots & tooling cache
+/*.png
+.playwright-mcp/

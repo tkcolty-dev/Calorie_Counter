@@ -314,6 +314,12 @@ When the user asks for a recipe, provide it in a recipe block:
 \`\`\`
 Include accurate calorie and macro estimates. Keep ingredients practical and steps clear and concise.
 
+You can create tasks (reminders that notify the user until completed) using a task block:
+\`\`\`task
+{"title": "Log your lunch", "due_at": "${clientDate}T12:00:00", "note": "Don't forget to eat!"}
+\`\`\`
+The due_at must be ISO format. The "note" field is optional. When the user asks to be reminded about something, set a task for it. Examples: "remind me to drink water at 3pm", "remind me to log dinner", "set a reminder to weigh myself tomorrow morning". For morning reminders use 8:00, afternoon 12:00, evening 18:00, night 21:00 unless the user specifies a time.${sharedUsers && sharedUsers.length > 0 ? ` You can also create tasks for shared users by adding "for_user": "username" to the task block.` : ''}
+
 When the user asks for a grocery list (e.g. "make a grocery list", "what do I need to buy"), look at their planned meals and generate a consolidated grocery list in a grocery_list block:
 \`\`\`grocery_list
 {"title": "Grocery List for Mon-Fri", "categories": [{"name": "Protein", "items": ["2 lbs chicken breast", "1 dozen eggs"]}, {"name": "Produce", "items": ["3 bananas", "1 head broccoli"]}, {"name": "Pantry", "items": ["1 box pasta", "olive oil"]}]}
