@@ -38,6 +38,9 @@ export default function QuickLogSheet({ open, onClose }) {
   const [showPhoto, setShowPhoto] = useState(false);
   const [showVoice, setShowVoice] = useState(false);
   const [showScan, setShowScan] = useState(false);
+  // "Log for" multi-target: {self: true, userIds: Set<number>}
+  const [logForSelf, setLogForSelf] = useState(true);
+  const [forUserIds, setForUserIds] = useState([]);
   const sheetRef = useRef(null);
 
   const { data: topFoods = [] } = useQuery({
@@ -61,6 +64,45 @@ export default function QuickLogSheet({ open, onClose }) {
   });
   const suggestion = suggestionData?.suggestion || null;
 
+  const { data: sharingData } = useQuery({
+    queryKey: ['sharing'],
+    queryFn: () => api.get('/sharing').then(r => r.data),
+    enabled: open,
+    staleTime: 1000 * 60 * 2,
+  });
+
+  const sharedUsers = useMemo(() => {
+    const out = [];
+    const seen = new Set();
+    if (sharingData) {
+      for (const s of (sharingData.sharedWithMe || [])) {
+        if (s.status === 'accepted' && !seen.has(s.owner_id)) {
+          seen.add(s.owner_id);
+          out.push({ userId: s.owner_id, username: s.owner_username });
+        }
+      }
+      for (const s of (sharingData.sharing || [])) {
+        if (s.status === 'accepted' && !seen.has(s.viewer_id)) {
+          seen.add(s.viewer_id);
+          out.push({ userId: s.viewer_id, username: s.viewer_username });
+        }
+      }
+    }
+    return out;
+  }, [sharingData]);
+
+  const targets = useMemo(() => {
+    const t = [];
+    if (logForSelf) t.push(undefined); // undefined = self
+    for (const id of forUserIds) t.push(parseInt(id));
+    return t.length === 0 ? [undefined] : t;
+  }, [logForSelf, forUserIds]);
+
+  const targetCount = targets.length;
+  const hasMultipleTargets = targetCount > 1;
+
+  const targetingValid = logForSelf || forUserIds.length > 0;
+
   useEffect(() => {
     if (open) {
       setMealType(defaultMealTypeForNow());
@@ -70,6 +112,8 @@ export default function QuickLogSheet({ open, onClose }) {
       setError('');
       setDescribeText('');
       setParsing(false);
+      setLogForSelf(true);
+      setForUserIds([]);
     }
   }, [open]);
 
@@ -87,8 +131,12 @@ export default function QuickLogSheet({ open, onClose }) {
     return () => window.removeEventListener('keydown', onKey);
   }, [open, onClose]);
 
+  const fanOutPosts = (basePayload) => {
+    return targets.map(t => api.post('/meals', { ...basePayload, for_user_id: t }));
+  };
+
   const logMeal = useMutation({
-    mutationFn: async (payload) => api.post('/meals', payload),
+    mutationFn: async (payload) => Promise.all(fanOutPosts(payload)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['meals'] });
       queryClient.invalidateQueries({ queryKey: ['top-foods-quick'] });
@@ -101,15 +149,22 @@ export default function QuickLogSheet({ open, onClose }) {
   const logBatch = useMutation({
     mutationFn: async (items) => {
       const localISO = nowLocalISO();
-      await Promise.all(items.map(it => api.post('/meals', {
-        meal_type: it.meal_type || mealType,
-        name: it.name,
-        calories: it.calories,
-        logged_at: localISO,
-        protein_g: it.protein_g ?? undefined,
-        carbs_g: it.carbs_g ?? undefined,
-        fat_g: it.fat_g ?? undefined,
-      })));
+      const requests = [];
+      for (const t of targets) {
+        for (const it of items) {
+          requests.push(api.post('/meals', {
+            meal_type: it.meal_type || mealType,
+            name: it.name,
+            calories: it.calories,
+            logged_at: localISO,
+            protein_g: it.protein_g ?? undefined,
+            carbs_g: it.carbs_g ?? undefined,
+            fat_g: it.fat_g ?? undefined,
+            for_user_id: t,
+          }));
+        }
+      }
+      await Promise.all(requests);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['meals'] });
@@ -123,27 +178,30 @@ export default function QuickLogSheet({ open, onClose }) {
   const logTemplate = useMutation({
     mutationFn: async (meal) => {
       const localISO = nowLocalISO();
-      if (meal.is_template && meal.template_items) {
-        await Promise.all(meal.template_items.map(item => api.post('/meals', {
-          meal_type: meal.meal_type,
-          name: item.name,
-          calories: item.calories,
-          logged_at: localISO,
-          protein_g: item.protein_g ?? undefined,
-          carbs_g: item.carbs_g ?? undefined,
-          fat_g: item.fat_g ?? undefined,
-        })));
-        return;
+      const requests = [];
+      const items = (meal.is_template && meal.template_items)
+        ? meal.template_items.map(item => ({
+            meal_type: meal.meal_type,
+            name: item.name,
+            calories: item.calories,
+            protein_g: item.protein_g ?? undefined,
+            carbs_g: item.carbs_g ?? undefined,
+            fat_g: item.fat_g ?? undefined,
+          }))
+        : [{
+            meal_type: meal.meal_type,
+            name: meal.name,
+            calories: meal.calories,
+            protein_g: meal.protein_g,
+            carbs_g: meal.carbs_g,
+            fat_g: meal.fat_g,
+          }];
+      for (const t of targets) {
+        for (const it of items) {
+          requests.push(api.post('/meals', { ...it, logged_at: localISO, for_user_id: t }));
+        }
       }
-      return api.post('/meals', {
-        meal_type: meal.meal_type,
-        name: meal.name,
-        calories: meal.calories,
-        logged_at: localISO,
-        protein_g: meal.protein_g,
-        carbs_g: meal.carbs_g,
-        fat_g: meal.fat_g,
-      });
+      await Promise.all(requests);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['meals'] });
@@ -167,6 +225,10 @@ export default function QuickLogSheet({ open, onClose }) {
 
   const handleTopFoodLog = (f) => {
     if (logMeal.isPending) return;
+    if (!targetingValid) {
+      setError('Pick at least one person to log for');
+      return;
+    }
     logMeal.mutate({
       meal_type: mealType,
       name: f.name,
@@ -177,6 +239,10 @@ export default function QuickLogSheet({ open, onClose }) {
 
   const handleConfirmLog = () => {
     if (!selected) return;
+    if (!targetingValid) {
+      setError('Pick at least one person to log for');
+      return;
+    }
     const cal = Math.round((selected.baseCal || 0) * quantity);
     if (!cal || cal <= 0) {
       setError('Calories required');
@@ -269,7 +335,7 @@ export default function QuickLogSheet({ open, onClose }) {
                   </div>
                   <div className="qls-suggestion-cta">
                     <span className="qls-suggestion-cal">{suggestion.calories}</span>
-                    <span className="qls-suggestion-go">Log</span>
+                    <span className="qls-suggestion-go">Log{hasMultipleTargets ? ` ×${targetCount}` : ''}</span>
                   </div>
                 </button>
               )}
@@ -285,6 +351,42 @@ export default function QuickLogSheet({ open, onClose }) {
                   </button>
                 ))}
               </div>
+
+              {/* "Log for" — only visible when there are shared users */}
+              {sharedUsers.length > 0 && (
+                <div className="qls-target-row">
+                  <span className="qls-target-label">Log for</span>
+                  <div className="qls-target-chips">
+                    <button
+                      type="button"
+                      className={`qls-target-chip${logForSelf ? ' active' : ''}`}
+                      onClick={() => setLogForSelf(s => !s)}
+                    >
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={logForSelf ? 3 : 0} strokeLinecap="round" strokeLinejoin="round" style={{ display: logForSelf ? 'inline-block' : 'none' }}>
+                        <polyline points="20 6 9 17 4 12"/>
+                      </svg>
+                      Me
+                    </button>
+                    {sharedUsers.map(s => {
+                      const id = String(s.userId);
+                      const active = forUserIds.includes(id);
+                      return (
+                        <button
+                          key={s.userId}
+                          type="button"
+                          className={`qls-target-chip${active ? ' active' : ''}`}
+                          onClick={() => setForUserIds(prev => active ? prev.filter(x => x !== id) : [...prev, id])}
+                        >
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 3 : 0} strokeLinecap="round" strokeLinejoin="round" style={{ display: active ? 'inline-block' : 'none' }}>
+                            <polyline points="20 6 9 17 4 12"/>
+                          </svg>
+                          {s.username}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               {error && <div className="error-message" style={{ marginBottom: '0.5rem' }}>{error}</div>}
 
@@ -321,9 +423,11 @@ export default function QuickLogSheet({ open, onClose }) {
                     <button
                       className="btn btn-primary qls-confirm-log"
                       onClick={handleConfirmLog}
-                      disabled={logMeal.isPending}
+                      disabled={logMeal.isPending || !targetingValid}
                     >
-                      {logMeal.isPending ? 'Logging…' : `Log ${previewCal} cal`}
+                      {logMeal.isPending
+                        ? 'Logging…'
+                        : `Log ${previewCal} cal${hasMultipleTargets ? ` ×${targetCount}` : ''}`}
                     </button>
                   </div>
                 </div>

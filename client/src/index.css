@@ -2690,6 +2690,61 @@ input, select, textarea {
   border-radius: 999px;
 }
 
+/* "Log for" multi-target chips */
+.qls-target-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.85rem;
+  padding-bottom: 0.55rem;
+  border-bottom: 1px dashed var(--color-border);
+  flex-wrap: wrap;
+}
+
+.qls-target-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  flex-shrink: 0;
+}
+
+.qls-target-chips {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  flex: 1;
+  min-width: 0;
+}
+
+.qls-target-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s var(--ease-out);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.qls-target-chip:active {
+  transform: scale(0.96);
+}
+
+.qls-target-chip.active {
+  background: color-mix(in srgb, var(--color-primary) 12%, var(--color-surface));
+  color: var(--color-primary);
+  border-color: color-mix(in srgb, var(--color-primary) 50%, transparent);
+  font-weight: 600;
+}
+
 /* Top-row capture method tiles (Photo / Voice / Scan) */
 .qls-methods {
   display: grid;
