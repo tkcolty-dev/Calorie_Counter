@@ -597,32 +597,36 @@ export default function MealLog() {
         </div>
 
         {sharedUsers.length > 0 && (
-          <div className="form-group">
-            <label>Log for</label>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.25rem' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.875rem', cursor: 'pointer' }}>
-                <input
-                  type="checkbox"
-                  checked={logForSelf}
-                  onChange={(e) => setLogForSelf(e.target.checked)}
-                  style={{ width: 16, height: 16 }}
-                />
+          <div className="qls-target-row" style={{ marginBottom: '0.6rem', paddingBottom: '0.55rem' }}>
+            <span className="qls-target-label">Log for</span>
+            <div className="qls-target-chips">
+              <button
+                type="button"
+                className={`qls-target-chip${logForSelf ? ' active' : ''}`}
+                onClick={() => setLogForSelf(s => !s)}
+              >
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={logForSelf ? 3 : 0} strokeLinecap="round" strokeLinejoin="round" style={{ display: logForSelf ? 'inline-block' : 'none' }}>
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
                 Me
-              </label>
-              {sharedUsers.map(s => (
-                <label key={s.userId} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.875rem', cursor: 'pointer' }}>
-                  <input
-                    type="checkbox"
-                    checked={forUserIds.includes(String(s.userId))}
-                    onChange={(e) => {
-                      const id = String(s.userId);
-                      setForUserIds(prev => e.target.checked ? [...prev, id] : prev.filter(x => x !== id));
-                    }}
-                    style={{ width: 16, height: 16 }}
-                  />
-                  {s.username}
-                </label>
-              ))}
+              </button>
+              {sharedUsers.map(s => {
+                const id = String(s.userId);
+                const active = forUserIds.includes(id);
+                return (
+                  <button
+                    key={s.userId}
+                    type="button"
+                    className={`qls-target-chip${active ? ' active' : ''}`}
+                    onClick={() => setForUserIds(prev => active ? prev.filter(x => x !== id) : [...prev, id])}
+                  >
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 3 : 0} strokeLinecap="round" strokeLinejoin="round" style={{ display: active ? 'inline-block' : 'none' }}>
+                      <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                    {s.username}
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}

@@ -34,9 +34,20 @@ body {
   color: var(--color-text);
   line-height: 1.6;
   min-height: 100vh;
+  min-height: 100dvh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: contain;
+}
+
+button, a, [role="button"] {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 /* Empty-state circular icon */
@@ -65,6 +76,15 @@ button {
 input, select, textarea {
   font-family: inherit;
   font-size: inherit;
+}
+
+/* Prevent iOS auto-zoom: any input/select/textarea must be >=16px on mobile */
+@media (max-width: 768px) {
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
 }
 
 .container {
@@ -428,18 +448,27 @@ input, select, textarea {
   background: none;
   border: none;
   color: var(--color-text-secondary);
-  font-size: 1.1rem;
-  padding: 0.2rem 0.4rem;
-  border-radius: 4px;
+  font-size: 1.2rem;
+  padding: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
   cursor: pointer;
   line-height: 1;
-  opacity: 0.5;
-  transition: opacity 0.15s, color 0.15s;
+  opacity: 0.55;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: opacity 0.15s, color 0.15s, background 0.15s;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.meal-table-row-delete:hover {
+.meal-table-row-delete:hover,
+.meal-table-row-delete:active {
   opacity: 1;
   color: var(--color-danger);
+  background: color-mix(in srgb, var(--color-danger) 10%, transparent);
 }
 
 /* ==================== Chat UI ==================== */
@@ -1130,10 +1159,19 @@ input, select, textarea {
   border: none;
   font-size: 1.25rem;
   color: var(--color-text-secondary);
-  padding: 0.25rem 0.5rem;
+  padding: 0.4rem 0.7rem;
+  min-width: 40px;
+  min-height: 40px;
   border-radius: var(--radius);
-  transition: background 0.15s;
+  transition: background 0.15s, color 0.15s;
   flex-shrink: 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.week-strip-arrow:active {
+  background: var(--color-bg);
+  color: var(--color-primary);
 }
 
 .week-strip-arrow:hover {
@@ -1526,12 +1564,21 @@ input, select, textarea {
 .modal-content {
   background: var(--color-surface);
   border-radius: var(--radius);
-  padding: 1.5rem;
+  padding: 1.25rem;
   width: 100%;
   max-width: 480px;
-  max-height: 90vh;
+  max-height: calc(90vh - var(--safe-bottom));
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   box-shadow: var(--shadow-md);
+  margin-bottom: var(--safe-bottom);
+}
+
+@media (max-width: 480px) {
+  .modal-content {
+    padding: 1rem;
+    border-radius: 14px;
+  }
 }
 
 /* ==================== What Should I Eat Button ==================== */
@@ -1771,7 +1818,8 @@ input, select, textarea {
 
   .app-main {
     padding-top: 1rem;
-    padding-bottom: calc(var(--tab-height) + var(--safe-bottom) + 1rem);
+    /* Extra room so content can scroll clear of the FAB (~78px above the tab bar) */
+    padding-bottom: calc(var(--tab-height) + var(--safe-bottom) + 5.5rem);
   }
 
   .container {
@@ -3213,13 +3261,20 @@ input, select, textarea {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  padding: 0.3rem 0.65rem;
+  padding: 0.45rem 0.8rem;
+  min-height: 36px;
   background: linear-gradient(135deg, #fb923c, #f97316);
   color: white;
   border-radius: 999px;
-  font-size: 0.78rem;
+  font-size: 0.8rem;
   font-weight: 700;
-  box-shadow: 0 2px 6px color-mix(in srgb, #f97316 35%, transparent);
+  box-shadow: 0 2px 8px color-mix(in srgb, #f97316 38%, transparent);
+  transition: transform 0.12s, box-shadow 0.18s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.streak-chip:active {
+  transform: scale(0.96);
 }
 
 .streak-chip svg {
@@ -3262,20 +3317,13 @@ input, select, textarea {
   }
 }
 
-/* ==================== Sticky log button (MealLog) ==================== */
+/* ==================== Log button (MealLog) ==================== */
+/* Note: not actually sticky — the page scrolls naturally and the button
+   appears in flow at the bottom of the form. The previous sticky behavior
+   caused the button to overlap form fields below it. */
 .meal-log-actions-sticky {
-  position: sticky;
-  bottom: calc(var(--safe-bottom) + 0.4rem);
-  background: linear-gradient(to top, var(--color-surface) 70%, color-mix(in srgb, var(--color-surface) 0%, transparent));
   padding-top: 0.6rem;
   margin-top: 0.5rem;
-  z-index: 5;
-}
-
-@media (max-width: 768px) {
-  .meal-log-actions-sticky {
-    bottom: calc(var(--tab-height) + var(--safe-bottom) + 0.4rem);
-  }
 }
 
 /* Larger primary buttons on mobile */
