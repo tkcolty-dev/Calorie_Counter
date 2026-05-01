@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { useNewShares } from '../hooks/useNewShares';
 import { useNewMessages } from '../hooks/useNewMessages';
 import MessageToast from './MessageToast';
+import MealLoggedToast from './MealLoggedToast';
 import QuickLogSheet from './QuickLogSheet';
 import api from '../api/client';
 
@@ -142,7 +143,7 @@ export default function Navbar() {
         return;
       }
       const last = meals[0];
-      await api.post('/meals', {
+      const created = await api.post('/meals', {
         meal_type: last.meal_type,
         name: last.name,
         calories: last.calories,
@@ -154,6 +155,13 @@ export default function Navbar() {
       queryClient.invalidateQueries({ queryKey: ['meals'] });
       queryClient.invalidateQueries({ queryKey: ['top-foods-quick'] });
       queryClient.invalidateQueries({ queryKey: ['top-foods-dash'] });
+      window.dispatchEvent(new CustomEvent('meal-logged-toast', {
+        detail: {
+          name: last.name,
+          calories: last.calories,
+          ids: created?.data?.id ? [created.data.id] : [],
+        },
+      }));
       setFabFlash('success');
       setTimeout(() => setFabFlash(null), 1200);
     } catch {
@@ -256,6 +264,7 @@ export default function Navbar() {
       </nav>
 
       <MessageToast message={latestMessage} onTap={() => navigate('/messages')} />
+      <MealLoggedToast />
 
       {/* First-time hint about long-press */}
       {!hideFab && showFabHint && (

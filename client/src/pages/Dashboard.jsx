@@ -111,21 +111,25 @@ export default function Dashboard() {
   });
 
   const quickLogTopFood = useMutation({
-    mutationFn: (food) => {
+    mutationFn: async (food) => {
       const n = new Date();
       const localISO = `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}T${String(n.getHours()).padStart(2, '0')}:${String(n.getMinutes()).padStart(2, '0')}:00`;
       const h = n.getHours();
       const meal_type = h >= 4 && h < 11 ? 'breakfast' : h >= 11 && h < 15 ? 'lunch' : h >= 17 && h < 22 ? 'dinner' : 'snack';
-      return api.post('/meals', {
+      const created = await api.post('/meals', {
         meal_type,
         name: food.name,
         calories: food.avg_calories,
         logged_at: localISO,
       });
+      return { food, created };
     },
-    onSuccess: () => {
+    onSuccess: ({ food, created }) => {
       queryClient.invalidateQueries({ queryKey: ['meals'] });
       queryClient.invalidateQueries({ queryKey: ['top-foods-dash'] });
+      window.dispatchEvent(new CustomEvent('meal-logged-toast', {
+        detail: { name: food.name, calories: food.avg_calories, ids: created?.data?.id ? [created.data.id] : [] },
+      }));
     },
   });
 

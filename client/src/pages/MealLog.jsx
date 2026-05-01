@@ -209,8 +209,10 @@ export default function MealLog() {
     mutationFn: async (meal) => {
       const localISO = nowLocalISO();
       if (meal.is_template && meal.template_items) {
+        const ids = [];
+        let totalCal = 0;
         for (const item of meal.template_items) {
-          await api.post('/meals', {
+          const created = await api.post('/meals', {
             meal_type: meal.meal_type,
             name: item.name,
             calories: item.calories,
@@ -219,10 +221,12 @@ export default function MealLog() {
             carbs_g: item.carbs_g ?? undefined,
             fat_g: item.fat_g ?? undefined,
           });
+          if (created?.data?.id) ids.push(created.data.id);
+          totalCal += item.calories || 0;
         }
-        return;
+        return { name: meal.name, calories: totalCal, ids };
       }
-      return api.post('/meals', {
+      const created = await api.post('/meals', {
         meal_type: meal.meal_type,
         name: meal.name,
         calories: meal.calories,
@@ -231,9 +235,15 @@ export default function MealLog() {
         carbs_g: meal.carbs_g,
         fat_g: meal.fat_g,
       });
+      return { name: meal.name, calories: meal.calories, ids: created?.data?.id ? [created.data.id] : [] };
     },
-    onSuccess: () => {
+    onSuccess: (info) => {
       queryClient.invalidateQueries({ queryKey: ['meals'] });
+      if (info && info.name) {
+        window.dispatchEvent(new CustomEvent('meal-logged-toast', {
+          detail: { name: info.name, calories: info.calories, ids: info.ids || [] },
+        }));
+      }
       navigate('/');
     },
   });

@@ -2738,6 +2738,116 @@ input, select, textarea {
   border-radius: 999px;
 }
 
+/* Today's progress banner inside the sheet */
+.qls-progress {
+  margin-bottom: 0.85rem;
+  padding: 0.6rem 0.85rem;
+  background: var(--color-bg);
+  border-radius: 12px;
+  border: 1px solid var(--color-border);
+}
+
+.qls-progress-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+}
+
+.qls-progress-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.qls-progress-num {
+  font-size: 0.92rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.qls-progress-of {
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.qls-progress-rem {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-success);
+  margin-left: auto;
+}
+
+.qls-progress-rem.over {
+  color: var(--color-danger);
+}
+
+.qls-progress-bar {
+  height: 6px;
+  background: var(--color-border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.qls-progress-fill {
+  height: 100%;
+  background: var(--color-success);
+  border-radius: 3px;
+  transition: width 0.5s var(--ease-out), background 0.2s;
+}
+
+.qls-progress-fill.near {
+  background: var(--color-warning);
+}
+
+.qls-progress-fill.over {
+  background: var(--color-danger);
+}
+
+/* Numbered section headers — make the flow obvious */
+.qls-section-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  margin: 0.95rem 0 0.5rem;
+}
+
+.qls-section-head:first-child {
+  margin-top: 0.4rem;
+}
+
+.qls-section-num {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--color-primary) 12%, var(--color-surface));
+  color: var(--color-primary);
+  font-size: 0.72rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1px;
+}
+
+.qls-section-title {
+  font-size: 0.86rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.qls-section-sub {
+  font-size: 0.74rem;
+  color: var(--color-text-secondary);
+  line-height: 1.35;
+  margin-top: 1px;
+}
+
 /* "Log for" multi-target chips */
 .qls-target-row {
   display: flex;
@@ -3191,6 +3301,99 @@ input, select, textarea {
   0%, 100% { transform: translateX(0); }
   25%      { transform: translateX(-6px); }
   75%      { transform: translateX(6px); }
+}
+
+/* Meal-logged toast with Undo */
+.meal-toast {
+  position: fixed;
+  top: calc(var(--safe-bottom) + 12px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.65rem 0.85rem;
+  background: var(--color-text);
+  color: var(--color-surface);
+  border-radius: 14px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.28);
+  z-index: 10001;
+  width: calc(100% - 24px);
+  max-width: 360px;
+  animation: meal-toast-in 0.32s var(--ease-out);
+}
+
+.meal-toast.undone {
+  background: var(--color-text-secondary);
+}
+
+@keyframes meal-toast-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(-12px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+.meal-toast-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--color-success);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.meal-toast.undone .meal-toast-icon {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.meal-toast-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.meal-toast-title {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.1;
+  margin-bottom: 1px;
+}
+
+.meal-toast-detail {
+  font-size: 0.88rem;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.meal-toast-undo {
+  flex-shrink: 0;
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: var(--color-surface);
+  padding: 0.4rem 0.85rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s, transform 0.1s;
+}
+
+.meal-toast-undo:active {
+  transform: scale(0.96);
+  background: rgba(255, 255, 255, 0.15);
+}
+
+@media (min-width: 769px) {
+  .meal-toast {
+    top: 16px;
+  }
 }
 
 /* First-time hint about FAB long-press */

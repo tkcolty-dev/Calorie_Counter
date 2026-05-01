@@ -64,6 +64,24 @@ export default function QuickLogSheet({ open, onClose }) {
   });
   const suggestion = suggestionData?.suggestion || null;
 
+  // Today's calorie progress (so user sees impact of every log)
+  const { data: todayMeals = [] } = useQuery({
+    queryKey: ['meals', today()],
+    queryFn: () => api.get('/meals', { params: { date: today() } }).then(r => r.data),
+    enabled: open,
+  });
+  const { data: goals } = useQuery({
+    queryKey: ['goals'],
+    queryFn: () => api.get('/goals').then(r => r.data),
+    enabled: open,
+    staleTime: 1000 * 60 * 5,
+  });
+  const todayCal = todayMeals.reduce((s, m) => s + (m.calories || 0), 0);
+  const dailyGoal = goals?.daily_total || 2000;
+  const remaining = Math.max(dailyGoal - todayCal, 0);
+  const calPct = Math.min((todayCal / dailyGoal) * 100, 100);
+  const isOver = todayCal > dailyGoal;
+
   const { data: sharingData } = useQuery({
     queryKey: ['sharing'],
     queryFn: () => api.get('/sharing').then(r => r.data),
@@ -136,10 +154,19 @@ export default function QuickLogSheet({ open, onClose }) {
   };
 
   const logMeal = useMutation({
-    mutationFn: async (payload) => Promise.all(fanOutPosts(payload)),
-    onSuccess: () => {
+    mutationFn: async (payload) => {
+      const responses = await Promise.all(fanOutPosts(payload));
+      // Capture meal IDs (only the self-target one to undo, since shared
+      // viewers can't be unposted from one user's session)
+      const ids = responses.map(r => r?.data?.id).filter(Boolean);
+      return { payload, ids };
+    },
+    onSuccess: ({ payload, ids }) => {
       queryClient.invalidateQueries({ queryKey: ['meals'] });
       queryClient.invalidateQueries({ queryKey: ['top-foods-quick'] });
+      window.dispatchEvent(new CustomEvent('meal-logged-toast', {
+        detail: { name: payload.name, calories: payload.calories, ids },
+      }));
       setLogged(true);
       setTimeout(() => { onClose(); }, 700);
     },
@@ -164,11 +191,20 @@ export default function QuickLogSheet({ open, onClose }) {
           }));
         }
       }
-      await Promise.all(requests);
+      const responses = await Promise.all(requests);
+      const ids = responses.map(r => r?.data?.id).filter(Boolean);
+      const totalCal = items.reduce((s, it) => s + (it.calories || 0), 0);
+      const name = items.length === 1
+        ? items[0].name
+        : `${items.length} items · ${items.map(i => i.name).slice(0, 2).join(', ')}${items.length > 2 ? ', …' : ''}`;
+      return { name, totalCal, ids };
     },
-    onSuccess: () => {
+    onSuccess: ({ name, totalCal, ids }) => {
       queryClient.invalidateQueries({ queryKey: ['meals'] });
       queryClient.invalidateQueries({ queryKey: ['top-foods-quick'] });
+      window.dispatchEvent(new CustomEvent('meal-logged-toast', {
+        detail: { name, calories: totalCal, ids },
+      }));
       setLogged(true);
       setTimeout(() => { onClose(); }, 800);
     },
@@ -201,10 +237,17 @@ export default function QuickLogSheet({ open, onClose }) {
           requests.push(api.post('/meals', { ...it, logged_at: localISO, for_user_id: t }));
         }
       }
-      await Promise.all(requests);
+      const responses = await Promise.all(requests);
+      const ids = responses.map(r => r?.data?.id).filter(Boolean);
+      const totalCal = items.reduce((s, it) => s + (it.calories || 0), 0);
+      const name = items.length === 1 ? items[0].name : `${items.length} items`;
+      return { name, totalCal, ids };
     },
-    onSuccess: () => {
+    onSuccess: ({ name, totalCal, ids }) => {
       queryClient.invalidateQueries({ queryKey: ['meals'] });
+      window.dispatchEvent(new CustomEvent('meal-logged-toast', {
+        detail: { name, calories: totalCal, ids },
+      }));
       setLogged(true);
       setTimeout(() => { onClose(); }, 700);
     },
@@ -311,6 +354,28 @@ export default function QuickLogSheet({ open, onClose }) {
             </div>
           ) : (
             <div className="qls-body">
+              {/* Today's progress — so the user sees exactly what their log changes */}
+              {!selected && (
+                <div className="qls-progress">
+                  <div className="qls-progress-row">
+                    <span className="qls-progress-label">Today</span>
+                    <span className="qls-progress-num">
+                      <strong>{todayCal.toLocaleString()}</strong>
+                      <span className="qls-progress-of"> / {dailyGoal.toLocaleString()} cal</span>
+                    </span>
+                    <span className={`qls-progress-rem${isOver ? ' over' : ''}`}>
+                      {isOver ? `${(todayCal - dailyGoal).toLocaleString()} over` : `${remaining.toLocaleString()} left`}
+                    </span>
+                  </div>
+                  <div className="qls-progress-bar">
+                    <div
+                      className={`qls-progress-fill${isOver ? ' over' : calPct > 80 ? ' near' : ''}`}
+                      style={{ width: `${calPct}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
               {/* Smart "same as usual" suggestion — fastest path */}
               {!selected && suggestion && (
                 <button
@@ -433,7 +498,14 @@ export default function QuickLogSheet({ open, onClose }) {
                 </div>
               ) : (
                 <>
-                  {/* Top-row capture methods - the easiest paths */}
+                  {/* Capture methods — the AI does the math for you */}
+                  <div className="qls-section-head">
+                    <span className="qls-section-num">1</span>
+                    <div>
+                      <div className="qls-section-title">Quick capture</div>
+                      <div className="qls-section-sub">Snap, speak, or scan — AI estimates calories.</div>
+                    </div>
+                  </div>
                   <div className="qls-methods">
                     <button
                       className="qls-method qls-method-photo"
@@ -467,7 +539,14 @@ export default function QuickLogSheet({ open, onClose }) {
                     </button>
                   </div>
 
-                  {/* Describe in plain text */}
+                  {/* Type or describe */}
+                  <div className="qls-section-head">
+                    <span className="qls-section-num">2</span>
+                    <div>
+                      <div className="qls-section-title">Type it</div>
+                      <div className="qls-section-sub">Describe your meal in plain English, or search the food database.</div>
+                    </div>
+                  </div>
                   <div className="qls-describe">
                     <input
                       type="text"
@@ -498,6 +577,17 @@ export default function QuickLogSheet({ open, onClose }) {
                   <div className="qls-search-wrap">
                     <FoodSearch onSelect={handleQuickFood} />
                   </div>
+
+                  {/* Shortcuts header — only show if either chip group will render */}
+                  {(customMeals.length > 0 || recentChips.length > 0) && (
+                    <div className="qls-section-head">
+                      <span className="qls-section-num">3</span>
+                      <div>
+                        <div className="qls-section-title">Your shortcuts</div>
+                        <div className="qls-section-sub">One tap to log — pulled from what you eat most.</div>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Saved meals */}
                   {customMeals.length > 0 && (
