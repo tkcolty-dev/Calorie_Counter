@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 export default function Login() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPwd, setShowPwd] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
@@ -18,25 +19,32 @@ export default function Login() {
       await login(username.trim(), password);
       navigate('/');
     } catch (err) {
-      setError(err.response?.data?.error || 'Login failed');
+      const status = err.response?.status;
+      if (status === 429) {
+        setError(err.response?.data?.error || 'Too many attempts. Try again in a few minutes.');
+      } else {
+        setError(err.response?.data?.error || 'Login failed');
+      }
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ width: '100%', maxWidth: 400, padding: '0 1rem' }}>
-        <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <h1 style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--color-primary)' }}>
-            Bitewise
-          </h1>
-          <p style={{ color: 'var(--color-text-secondary)', marginTop: 4 }}>
-            Sign in to your account
-          </p>
+    <div className="auth-page">
+      <div className="auth-shell">
+        <div className="auth-brand">
+          <div className="auth-logo" aria-hidden="true">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 11h18l-2 9H5l-2-9z"/>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+          </div>
+          <h1 className="auth-title">Bitewise</h1>
+          <p className="auth-sub">Welcome back. Sign in to keep tracking.</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="card">
+        <form onSubmit={handleSubmit} className="card auth-card">
           {error && <div className="error-message">{error}</div>}
 
           <div className="form-group">
@@ -52,38 +60,52 @@ export default function Login() {
               spellCheck={false}
               autoComplete="username"
               inputMode="text"
+              autoFocus
               required
             />
           </div>
 
           <div className="form-group">
             <label htmlFor="password">Password</label>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoCapitalize="none"
-              autoCorrect="off"
-              spellCheck={false}
-              autoComplete="current-password"
-              required
-            />
+            <div className="auth-pwd-wrap">
+              <input
+                id="password"
+                name="password"
+                type={showPwd ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                autoComplete="current-password"
+                required
+              />
+              <button
+                type="button"
+                className="auth-pwd-toggle"
+                onClick={() => setShowPwd(s => !s)}
+                aria-label={showPwd ? 'Hide password' : 'Show password'}
+              >
+                {showPwd ? (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                ) : (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                )}
+              </button>
+            </div>
           </div>
 
           <button
             type="submit"
-            className="btn btn-primary"
-            disabled={loading}
-            style={{ width: '100%', padding: '0.625rem', marginTop: '0.5rem' }}
+            className="btn btn-primary auth-submit"
+            disabled={loading || !username || !password}
           >
-            {loading ? 'Signing in...' : 'Sign in'}
+            {loading ? 'Signing in…' : 'Sign in'}
           </button>
         </form>
 
-        <p style={{ textAlign: 'center', marginTop: '1rem', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>
-          Don't have an account? <Link to="/register">Register</Link>
+        <p className="auth-foot">
+          Don't have an account? <Link to="/register">Create one</Link>
         </p>
       </div>
     </div>

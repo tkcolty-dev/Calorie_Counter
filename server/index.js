@@ -29,6 +29,10 @@ const { startTaskReminders } = require('./services/taskReminder');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Behind Cloud Foundry / reverse proxies, trust the first hop so req.ip and
+// X-Forwarded-For reflect the real client (used by rate limiting).
+app.set('trust proxy', 1);
+
 app.use(cors());
 app.use(express.json({ limit: '5mb' }));
 

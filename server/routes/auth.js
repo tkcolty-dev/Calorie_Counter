@@ -4,9 +4,31 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const pool = require('../config/db');
 const auth = require('../middleware/auth');
+const { rateLimit } = require('../middleware/rateLimit');
 const { usernameContainsProfanity } = require('../utils/profanityFilter');
 
 const router = express.Router();
+
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 8,
+  key: 'login',
+  message: 'Too many login attempts. Wait a few minutes and try again.',
+  skipSuccessful: true,
+});
+
+const registerLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  key: 'register',
+  message: 'Too many accounts created from this network. Try again later.',
+});
+
+const captchaLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  key: 'captcha',
+});
 
 // Simple server-side CAPTCHA
 function generateCaptcha() {
@@ -32,11 +54,11 @@ function verifyCaptcha(answer, token) {
   return hmac.digest('hex') === token;
 }
 
-router.get('/captcha', (req, res) => {
+router.get('/captcha', captchaLimiter, (req, res) => {
   res.json(generateCaptcha());
 });
 
-router.post('/register', async (req, res) => {
+router.post('/register', registerLimiter, async (req, res) => {
   try {
     let { username, password, captchaAnswer, captchaToken } = req.body;
     if (!username || !password) {
@@ -89,7 +111,7 @@ router.post('/register', async (req, res) => {
   }
 });
 
-router.post('/login', async (req, res) => {
+router.post('/login', loginLimiter, async (req, res) => {
   try {
     let { username, password } = req.body;
     if (!username || !password) {

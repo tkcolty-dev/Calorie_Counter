@@ -8,6 +8,16 @@ import WeekStrip from '../components/WeekStrip';
 import PlannedMealsList from '../components/PlannedMealsList';
 import PlanMealForm from '../components/PlanMealForm';
 import WelcomeTutorial from '../components/WelcomeTutorial';
+import { useAuth } from '../context/AuthContext';
+
+function greeting() {
+  const h = new Date().getHours();
+  if (h < 5) return 'Hey night owl';
+  if (h < 12) return 'Good morning';
+  if (h < 17) return 'Good afternoon';
+  if (h < 21) return 'Good evening';
+  return 'Hey night owl';
+}
 
 function CollapsibleSection({ title, subtitle, defaultOpen = true, children, actions }) {
   const [open, setOpen] = useState(defaultOpen);
@@ -43,6 +53,7 @@ function formatDate(d) {
 
 export default function Dashboard() {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   const now = new Date();
   const today = formatDate(now);
@@ -85,6 +96,37 @@ export default function Dashboard() {
     queryKey: ['weekly-summary'],
     queryFn: () => api.get('/reports/weekly-summary', { params: { today } }).then(r => r.data),
     staleTime: 1000 * 60 * 60, // 1 hour
+  });
+
+  const { data: streakData } = useQuery({
+    queryKey: ['streaks', today],
+    queryFn: () => api.get('/reports/streaks', { params: { today } }).then(r => r.data),
+    staleTime: 1000 * 60 * 10,
+  });
+
+  const { data: topFoods = [] } = useQuery({
+    queryKey: ['top-foods-dash', today],
+    queryFn: () => api.get('/meals/top-foods', { params: { days: 30, today } }).then(r => r.data),
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const quickLogTopFood = useMutation({
+    mutationFn: (food) => {
+      const n = new Date();
+      const localISO = `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}T${String(n.getHours()).padStart(2, '0')}:${String(n.getMinutes()).padStart(2, '0')}:00`;
+      const h = n.getHours();
+      const meal_type = h >= 4 && h < 11 ? 'breakfast' : h >= 11 && h < 15 ? 'lunch' : h >= 17 && h < 22 ? 'dinner' : 'snack';
+      return api.post('/meals', {
+        meal_type,
+        name: food.name,
+        calories: food.avg_calories,
+        logged_at: localISO,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['meals'] });
+      queryClient.invalidateQueries({ queryKey: ['top-foods-dash'] });
+    },
   });
 
   // Compute the visible week range for planned meals query
@@ -173,14 +215,47 @@ export default function Dashboard() {
   return (
     <div>
       <WelcomeTutorial />
-      <div className="page-header">
-        <h1>Today's Summary</h1>
-        <p>{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
+      <div className="dash-greeting">
+        <div className="dash-greeting-text">
+          <h1>{greeting()}{user?.username ? `, ${user.username}` : ''}</h1>
+          <p>{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
+        </div>
+        {streakData?.currentStreak > 0 && (
+          <Link to="/reports" className="streak-chip" title={`Longest: ${streakData.longestStreak} days`} style={{ textDecoration: 'none' }}>
+            <svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M13.5 1c-1.6 4-4 4.7-4 8 0 1.5 1 3 2.5 3-1 0-2 1-2 2.5 0 1 .5 2 1 2.5-3-1-6-3.5-6-8C5 5 9 2 13.5 1zm3 7c.5 2 3 2.5 3 6 0 4-3 7-7.5 8 1.5-1 2-2.5 2-4 0-1-.5-1.5-1-2 1 0 1.5-.5 1.5-1.5 0-2.5-2-3-2-4.5 0-.7.6-1.6 4-2z"/></svg>
+            {streakData.currentStreak} day{streakData.currentStreak !== 1 ? 's' : ''}
+          </Link>
+        )}
       </div>
 
       <div className="card" style={{ marginBottom: '0.75rem', padding: '0.6rem 0.75rem' }}>
         <CalorieBudgetBar consumed={totalCalories} goal={dailyGoal} macros={macroTotals} macroGoals={macroGoals} />
       </div>
+
+      {/* Frequent foods - one tap log */}
+      {topFoods.length > 0 && (
+        <div style={{ marginBottom: '0.85rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+            <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--color-text-secondary)' }}>
+              Tap to log instantly
+            </span>
+            <Link to="/log" style={{ fontSize: '0.75rem' }}>More options →</Link>
+          </div>
+          <div className="qls-chip-row">
+            {topFoods.slice(0, 6).map(f => (
+              <button
+                key={f.name}
+                className="qls-chip qls-chip-recent"
+                onClick={() => quickLogTopFood.mutate(f)}
+                disabled={quickLogTopFood.isPending}
+              >
+                <span className="qls-chip-name">{f.name}</span>
+                <span className="qls-chip-cal">{f.avg_calories}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Pending tasks */}
       <DashboardTasks />
@@ -198,7 +273,7 @@ export default function Dashboard() {
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={showQuickActions ? 'rotated' : ''}><polyline points="6 9 12 15 18 9"/></svg>
       </button>
       {showQuickActions && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.5rem', marginBottom: '1rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '0.45rem', marginBottom: '1rem' }}>
           <Link to="/log" className="quick-action-tile">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
             <span>Log</span>
@@ -210,6 +285,10 @@ export default function Dashboard() {
           <Link to="/weight" className="quick-action-tile">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v18"/><path d="M3 12h18"/><path d="M16 7l-4-4-4 4"/><path d="M8 17l4 4 4-4"/></svg>
             <span>Weight</span>
+          </Link>
+          <Link to="/goals" className="quick-action-tile">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+            <span>Goals</span>
           </Link>
           <Link to="/challenges" className="quick-action-tile">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
@@ -347,9 +426,17 @@ export default function Dashboard() {
           {mealsLoading ? (
             <div className="loading">Loading meals...</div>
           ) : meals.length === 0 ? (
-            <div style={{ textAlign: 'center', color: 'var(--color-text-secondary)', padding: '0.75rem 0' }}>
-              <p>No meals logged today.</p>
-              <Link to="/log" style={{ fontSize: '0.9rem' }}>Log your first meal</Link>
+            <div style={{ textAlign: 'center', color: 'var(--color-text-secondary)', padding: '1.25rem 0.5rem' }}>
+              <div className="empty-icon" aria-hidden="true">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 11h18l-2 9H5l-2-9z"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+              </div>
+              <p style={{ marginBottom: '0.6rem', fontSize: '0.9rem' }}>Nothing logged yet — let's fix that.</p>
+              <Link to="/log" className="btn btn-primary" style={{ fontSize: '0.85rem', padding: '0.6rem 1.15rem', display: 'inline-flex' }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Log a meal
+              </Link>
             </div>
           ) : (
             <MealTable meals={meals} onDelete={(id) => deleteMeal.mutate(id)} />

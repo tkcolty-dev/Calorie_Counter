@@ -372,10 +372,9 @@ export default function MealLog() {
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 5V3h4"/><path d="M17 3h4v2"/><path d="M21 19v2h-4"/><path d="M7 21H3v-2"/><path d="M7 8v8"/><path d="M11 8v8"/><path d="M15 8v8"/><path d="M19 8v8"/></svg>
             <span>Scan Barcode</span>
           </button>
-          <button className="log-action-btn" disabled style={{ opacity: 0.5, cursor: 'not-allowed' }} title="Vision model not available">
+          <button className="log-action-btn" onClick={() => setShowPhotoCapture(true)} title="Snap a photo of your food">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
             <span>Photo Log</span>
-            <span style={{ fontSize: '0.65rem', color: 'var(--color-text-secondary)' }}>Coming soon</span>
           </button>
           <button className="log-action-btn" onClick={() => setShowVoiceLogger(true)}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
@@ -671,12 +670,12 @@ export default function MealLog() {
           </label>
         </div>
 
-        <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
+        <div className="meal-log-actions-sticky" style={{ display: 'flex', gap: '0.75rem' }}>
           <button
             type="submit"
             className="btn btn-primary"
             disabled={createMeal.isPending}
-            style={{ flex: 1, padding: '0.625rem' }}
+            style={{ flex: 1, padding: '0.85rem', fontSize: '0.95rem', fontWeight: 600 }}
           >
             {submitLabel}
           </button>
@@ -684,7 +683,7 @@ export default function MealLog() {
             type="button"
             className="btn btn-secondary"
             onClick={() => navigate('/')}
-            style={{ padding: '0.625rem 1.5rem' }}
+            style={{ padding: '0.85rem 1.25rem' }}
           >
             Cancel
           </button>
