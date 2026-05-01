@@ -228,17 +228,30 @@ export default function Navbar() {
       {/* Mobile bottom tab bar */}
       <nav className="mobile-tabs">
         {tabs.map(t => (
-          <NavLink
-            key={t.to}
-            to={t.to}
-            end={t.to === '/'}
-            className={({ isActive }) => `mobile-tab${isActive ? ' active' : ''}`}
-            style={{ position: 'relative' }}
-          >
-            <span className="mobile-tab-icon" aria-hidden="true">{t.icon}</span>
-            <span className="mobile-tab-label">{t.label}</span>
-            {t.to === '/profile' && hasProfileBadge && <span style={badgeDot} />}
-          </NavLink>
+          t.to === '/log' ? (
+            <button
+              key={t.to}
+              type="button"
+              className={`mobile-tab mobile-tab-action${location.pathname === '/log' ? ' active' : ''}`}
+              onClick={() => setShowQuickLog(true)}
+              aria-label="Quick log"
+            >
+              <span className="mobile-tab-icon" aria-hidden="true">{t.icon}</span>
+              <span className="mobile-tab-label">{t.label}</span>
+            </button>
+          ) : (
+            <NavLink
+              key={t.to}
+              to={t.to}
+              end={t.to === '/'}
+              className={({ isActive }) => `mobile-tab${isActive ? ' active' : ''}`}
+              style={{ position: 'relative' }}
+            >
+              <span className="mobile-tab-icon" aria-hidden="true">{t.icon}</span>
+              <span className="mobile-tab-label">{t.label}</span>
+              {t.to === '/profile' && hasProfileBadge && <span style={badgeDot} />}
+            </NavLink>
+          )
         ))}
       </nav>
 

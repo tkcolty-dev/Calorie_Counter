@@ -55,10 +55,31 @@ export default function MealLog() {
   const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
   const [showPhotoCapture, setShowPhotoCapture] = useState(false);
   const [showVoiceLogger, setShowVoiceLogger] = useState(false);
+  const [describeText, setDescribeText] = useState('');
+  const [parsing, setParsing] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const nameInputRef = useRef(null);
+
+  const todayStr = (() => {
+    const n = new Date();
+    return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`;
+  })();
+
+  const { data: topFoods = [] } = useQuery({
+    queryKey: ['top-foods-log'],
+    queryFn: () => api.get('/meals/top-foods', { params: { days: 30, today: todayStr } }).then(r => r.data),
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const { data: suggestionData } = useQuery({
+    queryKey: ['suggestion-log', todayStr],
+    queryFn: () => api.get('/suggestions', { params: { today: todayStr, hour: new Date().getHours() } }).then(r => r.data),
+    staleTime: 1000 * 60 * 5,
+  });
+  const suggestion = suggestionData?.suggestion || null;
 
   // Debounced calorie lookup on name input
   useEffect(() => {
@@ -287,6 +308,49 @@ export default function MealLog() {
     setTimeout(() => setJustAddedId(null), 700);
   };
 
+  const quickAddTopFood = (food) => {
+    const item = {
+      id: newItemId(),
+      name: food.name,
+      calories: food.avg_calories,
+      protein_g: null,
+      carbs_g: null,
+      fat_g: null,
+    };
+    setItems(prev => [...prev, item]);
+    setJustAddedId(item.id);
+    setTimeout(() => setJustAddedId(null), 700);
+  };
+
+  const handleDescribe = async () => {
+    const text = describeText.trim();
+    if (!text || parsing) return;
+    setError('');
+    setParsing(true);
+    try {
+      const res = await api.post('/voice-log', { transcript: text, today: todayStr });
+      const parsed = res.data.meals || [];
+      if (parsed.length === 0) {
+        setError("Couldn't find any food in that. Try \"two eggs and toast\".");
+      } else {
+        const newItems = parsed.map(p => ({
+          id: newItemId(),
+          name: p.name,
+          calories: p.calories,
+          protein_g: p.protein_g ?? null,
+          carbs_g: p.carbs_g ?? null,
+          fat_g: p.fat_g ?? null,
+        }));
+        setItems(prev => [...prev, ...newItems]);
+        setDescribeText('');
+      }
+    } catch (err) {
+      setError(err.response?.data?.error || 'Could not parse that. Try a search instead.');
+    } finally {
+      setParsing(false);
+    }
+  };
+
   const handleItemKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey && !e.metaKey && !e.ctrlKey) {
       e.preventDefault();
@@ -331,29 +395,137 @@ export default function MealLog() {
 
   return (
     <div>
-      <BackHeader title="Log a Meal" subtitle="Add one or more items to this meal" />
+      <BackHeader title="Log a Meal" subtitle="Pick a fast path or add manually" />
 
-      {customMeals.length > 0 && (
-        <div style={{ marginBottom: '1rem' }}>
+      {/* Smart "your usual" suggestion banner — one tap to log */}
+      {suggestion && items.length === 0 && (
+        <button
+          className="qls-suggestion"
+          style={{ marginBottom: '0.85rem' }}
+          onClick={() => {
+            setMealType(suggestion.meal_type);
+            quickLog.mutate({
+              meal_type: suggestion.meal_type,
+              name: suggestion.name,
+              calories: suggestion.calories,
+            });
+          }}
+          disabled={quickLog.isPending}
+        >
+          <div className="qls-suggestion-spark">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z"/></svg>
+          </div>
+          <div className="qls-suggestion-body">
+            <div className="qls-suggestion-eyebrow">Your usual {suggestion.meal_type}</div>
+            <div className="qls-suggestion-name">{suggestion.name}</div>
+          </div>
+          <div className="qls-suggestion-cta">
+            <span className="qls-suggestion-cal">{suggestion.calories}</span>
+            <span className="qls-suggestion-go">Log</span>
+          </div>
+        </button>
+      )}
+
+      {/* Top-row capture method tiles — biggest, fastest paths */}
+      <div className="qls-methods" style={{ marginBottom: '0.85rem' }}>
+        <button className="qls-method qls-method-photo" onClick={() => setShowPhotoCapture(true)}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>
+          </svg>
+          <span>Photo</span>
+        </button>
+        <button className="qls-method qls-method-voice" onClick={() => setShowVoiceLogger(true)}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>
+          </svg>
+          <span>Voice</span>
+        </button>
+        <button className="qls-method qls-method-scan" onClick={() => setShowBarcodeScanner(true)}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 5V3h4"/><path d="M17 3h4v2"/><path d="M21 19v2h-4"/><path d="M7 21H3v-2"/><path d="M7 8v8"/><path d="M11 8v8"/><path d="M15 8v8"/><path d="M19 8v8"/>
+          </svg>
+          <span>Scan</span>
+        </button>
+      </div>
+
+      {/* Describe-it natural language input */}
+      <div className="qls-describe" style={{ marginBottom: '0.85rem' }}>
+        <input
+          type="text"
+          className="qls-describe-input"
+          placeholder='Or describe it: "two eggs and toast"'
+          value={describeText}
+          onChange={(e) => setDescribeText(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleDescribe(); } }}
+          disabled={parsing}
+        />
+        <button
+          type="button"
+          className="qls-describe-go"
+          onClick={handleDescribe}
+          disabled={parsing || !describeText.trim()}
+          aria-label="Parse and add"
+        >
+          {parsing ? (
+            <span className="qls-spinner" />
+          ) : (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M5 12h14"/><polyline points="12 5 19 12 12 19"/>
+            </svg>
+          )}
+        </button>
+      </div>
+
+      {/* Search */}
+      <div className="card" style={{ marginBottom: '0.75rem', padding: '0.85rem 1rem' }}>
+        <FoodSearch onSelect={handleFoodSelect} onQuickAdd={quickAddFood} />
+      </div>
+
+      {/* Frequent foods — one tap to add to current meal */}
+      {topFoods.length > 0 && items.length === 0 && (
+        <div style={{ marginBottom: '0.85rem' }}>
+          <div className="qls-section-label" style={{ marginTop: 0 }}>Frequent · tap to add</div>
+          <div className="qls-chip-row">
+            {topFoods.slice(0, 6).map(f => (
+              <button
+                key={f.name}
+                type="button"
+                className="qls-chip qls-chip-recent"
+                onClick={() => quickAddTopFood(f)}
+              >
+                <span className="qls-chip-name">{f.name}</span>
+                <span className="qls-chip-cal">{f.avg_calories}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Saved meals — one tap to log entire template */}
+      {customMeals.length > 0 && items.length === 0 && (
+        <div style={{ marginBottom: '0.85rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-            <label style={{ fontSize: '0.875rem', fontWeight: 500 }}>
-              My Saved Meals
-            </label>
-            <button className="btn btn-secondary" style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem' }} onClick={() => setShowTemplateBuilder(true)}>
+            <span className="qls-section-label" style={{ margin: 0 }}>Saved meals</span>
+            <button type="button" className="btn btn-secondary" style={{ fontSize: '0.7rem', padding: '0.25rem 0.55rem' }} onClick={() => setShowTemplateBuilder(true)}>
               + Template
             </button>
           </div>
-          <div className="saved-meals-bar">
+          <div className="qls-chip-row">
             {customMeals.map(m => (
               <button
                 key={m.id}
-                className="saved-meal-chip"
+                type="button"
+                className="qls-chip qls-chip-saved"
                 onClick={() => quickLog.mutate(m)}
                 disabled={quickLog.isPending}
               >
-                {m.is_template && <span style={{ marginRight: 4 }}>&#x1F4CB;</span>}
-                {m.name}
-                <span className="saved-meal-chip-cal">{m.calories} cal</span>
+                {m.is_template && (
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 3, opacity: 0.7 }}>
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/>
+                  </svg>
+                )}
+                <span className="qls-chip-name">{m.name}</span>
+                <span className="qls-chip-cal">{m.calories}</span>
               </button>
             ))}
           </div>
@@ -361,27 +533,6 @@ export default function MealLog() {
       )}
 
       {showTemplateBuilder && <TemplateBuilder onClose={() => setShowTemplateBuilder(false)} />}
-
-      <div className="card" style={{ marginBottom: '0.75rem' }}>
-        <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: 6 }}>
-          Quick search from food database
-        </label>
-        <FoodSearch onSelect={handleFoodSelect} onQuickAdd={quickAddFood} />
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem', marginTop: '0.75rem' }}>
-          <button className="log-action-btn" onClick={() => setShowBarcodeScanner(true)}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 5V3h4"/><path d="M17 3h4v2"/><path d="M21 19v2h-4"/><path d="M7 21H3v-2"/><path d="M7 8v8"/><path d="M11 8v8"/><path d="M15 8v8"/><path d="M19 8v8"/></svg>
-            <span>Scan Barcode</span>
-          </button>
-          <button className="log-action-btn" onClick={() => setShowPhotoCapture(true)} title="Snap a photo of your food">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-            <span>Photo Log</span>
-          </button>
-          <button className="log-action-btn" onClick={() => setShowVoiceLogger(true)}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
-            <span>Voice Log</span>
-          </button>
-        </div>
-      </div>
 
       {showBarcodeScanner && (
         <BarcodeScanner
@@ -430,17 +581,19 @@ export default function MealLog() {
         {error && <div className="error-message">{error}</div>}
 
         <div className="form-group">
-          <label htmlFor="mealType">Meal type</label>
-          <select
-            id="mealType"
-            value={mealType}
-            onChange={(e) => setMealType(e.target.value)}
-          >
-            <option value="breakfast">Breakfast</option>
-            <option value="lunch">Lunch</option>
-            <option value="dinner">Dinner</option>
-            <option value="snack">Snack</option>
-          </select>
+          <label>Meal type</label>
+          <div className="qls-meal-type-row" style={{ marginBottom: 0 }}>
+            {['breakfast', 'lunch', 'dinner', 'snack'].map(t => (
+              <button
+                key={t}
+                type="button"
+                className={`qls-meal-pill${mealType === t ? ' active' : ''}`}
+                onClick={() => setMealType(t)}
+              >
+                <span style={{ textTransform: 'capitalize' }}>{t}</span>
+              </button>
+            ))}
+          </div>
         </div>
 
         {sharedUsers.length > 0 && (
@@ -520,8 +673,21 @@ export default function MealLog() {
           </div>
         )}
 
-        {/* Add an item form */}
-        <div className="meal-item-form">
+        {/* Add an item form - collapsed by default; expanded automatically when user starts typing or has items */}
+        {!showAdvanced && items.length === 0 && (
+          <button
+            type="button"
+            className="meal-log-toggle"
+            onClick={() => setShowAdvanced(true)}
+            style={{ marginTop: '0.4rem' }}
+          >
+            <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="10" y1="4" x2="10" y2="16"/><line x1="4" y1="10" x2="16" y2="10"/>
+            </svg>
+            Add manually with macros
+          </button>
+        )}
+        <div className="meal-item-form" style={{ display: (showAdvanced || items.length > 0) ? 'block' : 'none' }}>
           <div className="meal-item-form-header">
             {items.length > 0 ? 'Add another item' : 'Add an item'}
           </div>

@@ -1738,6 +1738,13 @@ input, select, textarea {
     color: var(--color-primary);
   }
 
+  .mobile-tab-action {
+    background: none;
+    border: none;
+    font-family: inherit;
+    cursor: pointer;
+  }
+
   .mobile-tab:active .mobile-tab-icon {
     transform: scale(0.9);
   }
