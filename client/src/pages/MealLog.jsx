@@ -57,7 +57,7 @@ export default function MealLog() {
   const [showVoiceLogger, setShowVoiceLogger] = useState(false);
   const [describeText, setDescribeText] = useState('');
   const [parsing, setParsing] = useState(false);
-  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(true);
 
   const navigate = useNavigate();
   const queryClient = useQueryClient();
