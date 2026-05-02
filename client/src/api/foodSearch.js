@@ -7,6 +7,30 @@ export function titleCase(str) {
   return str.toLowerCase().replace(/(?:^|\s|[-/])\w/g, (c) => c.toUpperCase());
 }
 
+// OFF sometimes returns image URLs in a malformed shape like
+// `.../front_fr.202.1` — the trailing `.1` does not correspond to a valid
+// size suffix and the URL 404s. Normalize: keep `<imgname>.<rev>` (where rev
+// is at least 2 digits, treated as a revision number), drop any further
+// trailing `.<short_digits>`, and ensure a `.200.jpg` size suffix.
+function normalizeOffImageUrl(raw) {
+  if (!raw || typeof raw !== 'string') return null;
+  if (/\.(jpe?g|png|webp)(\?|$)/i.test(raw)) return raw;
+
+  const m = raw.match(/^([^?#]*)([?#].*)?$/);
+  let base = (m && m[1]) || raw;
+  const tail = (m && m[2]) || '';
+
+  // Drop a trailing low-digit fragment (e.g. `.1`, `.2`) that isn't a size key.
+  // Real OFF size suffixes are 100, 200, 400, or `full`.
+  base = base.replace(/\.([0-9]{1,2})$/, '');
+
+  // If the URL still doesn't end in a known size key, append `.200`
+  if (!/\.(100|200|400|full)$/.test(base)) {
+    base = `${base}.200`;
+  }
+  return `${base}.jpg${tail}`;
+}
+
 export async function searchOFF(query) {
   try {
     const params = new URLSearchParams({
@@ -15,7 +39,7 @@ export async function searchOFF(query) {
       page_size: '50',
       search_simple: '1',
       action: 'process',
-      fields: 'product_name,brands,nutriments,serving_size,code,image_thumb_url,image_small_url,image_front_thumb_url,image_front_small_url',
+      fields: 'product_name,brands,nutriments,serving_size,code,image_url,image_front_url,image_thumb_url,image_small_url,image_front_thumb_url,image_front_small_url',
     });
     const resp = await fetch(`${OFF_BASE}?${params}`);
     if (!resp.ok) return [];
@@ -31,7 +55,21 @@ export async function searchOFF(query) {
         const servingLabel = calServing && p.serving_size
           ? p.serving_size
           : cal100g ? 'per 100g' : '1 serving';
-        const image = p.image_front_thumb_url || p.image_thumb_url || p.image_front_small_url || p.image_small_url || null;
+        // Try preferred fields in order, normalize each. The first one that
+        // produces a valid-looking URL wins.
+        const candidates = [
+          p.image_front_small_url,
+          p.image_small_url,
+          p.image_front_thumb_url,
+          p.image_thumb_url,
+          p.image_front_url,
+          p.image_url,
+        ];
+        let image = null;
+        for (const c of candidates) {
+          const norm = normalizeOffImageUrl(c);
+          if (norm) { image = norm; break; }
+        }
         return {
           id: `off-${p.code}`,
           name: titleCase(p.product_name),
