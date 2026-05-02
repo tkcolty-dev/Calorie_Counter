@@ -953,8 +953,64 @@ input[type="number"] {
   transform: rotate(180deg);
 }
 
+/* Smooth expand/collapse for the dashboard cards. We use a CSS grid trick
+   so the content height isn't hard-coded — it animates from 0fr -> 1fr,
+   which interpolates the natural content height. */
 .collapsible-content {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.32s cubic-bezier(0.32, 0.72, 0, 1);
   overflow: hidden;
+}
+
+.collapsible-content.open {
+  grid-template-rows: 1fr;
+}
+
+.collapsible-content-inner {
+  min-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  transform: translateY(-4px);
+  transition: opacity 0.28s ease-out 0.05s, transform 0.32s cubic-bezier(0.32, 0.72, 0, 1) 0.05s;
+}
+
+.collapsible-content.open .collapsible-content-inner {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .collapsible-content,
+  .collapsible-content-inner { transition: none; }
+}
+
+/* Same animation for meal-type rows inside the Meals card */
+.meal-table-rows-anim {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.32s cubic-bezier(0.32, 0.72, 0, 1);
+  overflow: hidden;
+}
+
+.meal-table-rows-anim.open {
+  grid-template-rows: 1fr;
+}
+
+.meal-table-rows-anim > .meal-table-rows {
+  min-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition: opacity 0.25s ease-out 0.04s;
+}
+
+.meal-table-rows-anim.open > .meal-table-rows {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .meal-table-rows-anim,
+  .meal-table-rows-anim > .meal-table-rows { transition: none; }
 }
 
 .history-section {

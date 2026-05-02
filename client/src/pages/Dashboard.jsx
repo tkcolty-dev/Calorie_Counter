@@ -18,11 +18,11 @@ function greeting() {
   return 'Good evening';
 }
 
-function CollapsibleSection({ title, subtitle, defaultOpen = true, children, actions }) {
+function CollapsibleSection({ title, subtitle, defaultOpen = false, children, actions }) {
   const [open, setOpen] = useState(defaultOpen);
 
   return (
-    <div className="collapsible-section">
+    <div className={`collapsible-section${open ? ' is-open' : ''}`}>
       <button className="collapsible-header" onClick={() => setOpen(!open)}>
         <div className="collapsible-title-row">
           <div>
@@ -37,11 +37,11 @@ function CollapsibleSection({ title, subtitle, defaultOpen = true, children, act
           </div>
         </div>
       </button>
-      {open && (
-        <div className="collapsible-content open">
+      <div className={`collapsible-content${open ? ' open' : ''}`} aria-hidden={!open}>
+        <div className="collapsible-content-inner">
           {children}
         </div>
-      )}
+      </div>
     </div>
   );
 }

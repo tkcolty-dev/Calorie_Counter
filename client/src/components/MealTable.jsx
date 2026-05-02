@@ -20,7 +20,10 @@ const typeColors = {
 const typeOrder = ['breakfast', 'lunch', 'dinner', 'snack'];
 
 export default function MealTable({ meals, onDelete }) {
-  const [collapsed, setCollapsed] = useState({});
+  // Default: every meal-type section starts collapsed; user taps to expand.
+  const [collapsed, setCollapsed] = useState(() => ({
+    breakfast: true, lunch: true, dinner: true, snack: true,
+  }));
 
   const mealsByType = {};
   for (const type of typeOrder) {
@@ -57,7 +60,7 @@ export default function MealTable({ meals, onDelete }) {
                 <span style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', transition: 'transform 0.2s', transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)' }}>&#9662;</span>
               </div>
             </div>
-            {!isCollapsed && (
+            <div className={`meal-table-rows-anim${isCollapsed ? '' : ' open'}`}>
               <div className="meal-table-rows">
                 {items.map(meal => (
                   <div key={meal.id} className="meal-table-item">
@@ -89,7 +92,7 @@ export default function MealTable({ meals, onDelete }) {
                   </div>
                 ))}
               </div>
-            )}
+            </div>
           </div>
         );
       })}
