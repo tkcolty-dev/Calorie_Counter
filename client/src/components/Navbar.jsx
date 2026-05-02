@@ -232,9 +232,12 @@ export default function Navbar() {
         </div>
       </nav>
 
-      {/* Main content */}
+      {/* Main content — keyed on the route so React unmounts/remounts the page
+          and our CSS animation runs every time the user switches tabs. */}
       <main className="container app-main">
-        <Outlet />
+        <div key={location.pathname} className="route-fade">
+          <Outlet />
+        </div>
       </main>
 
       {/* Mobile bottom tab bar */}

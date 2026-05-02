@@ -50,6 +50,22 @@ html {
   scroll-behavior: smooth;
 }
 
+/* Page transition — runs on every route change because the wrapper is keyed
+   on the location's pathname (see Navbar.jsx). Slides in from the right with
+   a soft fade so the user feels they're "navigating" between screens. */
+.route-fade {
+  animation: route-fade-in 0.26s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+@keyframes route-fade-in {
+  from { opacity: 0; transform: translateX(8px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .route-fade { animation: none; }
+}
+
 /* Empty-state circular icon */
 .empty-icon {
   width: 56px;

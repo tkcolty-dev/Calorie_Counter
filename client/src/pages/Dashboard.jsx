@@ -19,11 +19,23 @@ function greeting() {
 }
 
 function CollapsibleSection({ title, subtitle, defaultOpen = false, children, actions }) {
-  const [open, setOpen] = useState(defaultOpen);
+  const storageKey = `collapse-${title}`;
+  const [open, setOpen] = useState(() => {
+    try {
+      const v = localStorage.getItem(storageKey);
+      if (v === '1') return true;
+      if (v === '0') return false;
+    } catch {}
+    return defaultOpen;
+  });
+  const setOpenPersist = (val) => {
+    setOpen(val);
+    try { localStorage.setItem(storageKey, val ? '1' : '0'); } catch {}
+  };
 
   return (
     <div className={`collapsible-section${open ? ' is-open' : ''}`}>
-      <button className="collapsible-header" onClick={() => setOpen(!open)}>
+      <button className="collapsible-header" onClick={() => setOpenPersist(!open)}>
         <div className="collapsible-title-row">
           <div>
             <span className="collapsible-title">{title}</span>
