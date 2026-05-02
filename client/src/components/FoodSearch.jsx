@@ -101,7 +101,7 @@ export default function FoodSearch({ onSelect, onQuickAdd }) {
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         onFocus={() => results.length > 0 && setOpen(true)}
-        placeholder="Search foods (e.g. DiGiorno pizza, thin crust, Big Mac)..."
+        placeholder="Search foods…"
         style={{
           width: '100%',
           padding: '0.5rem 0.75rem',
