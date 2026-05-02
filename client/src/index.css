@@ -50,16 +50,17 @@ html {
   scroll-behavior: smooth;
 }
 
-/* Page transition — runs on every route change because the wrapper is keyed
-   on the location's pathname (see Navbar.jsx). Slides in from the right with
-   a soft fade so the user feels they're "navigating" between screens. */
+/* Page transition — fade only. We deliberately avoid transform on the
+   wrapper because any transform on an ancestor turns position:fixed
+   children into ancestor-positioned elements, which broke the sticky
+   "Log meal" bar on /log and the floating FAB on every mobile route. */
 .route-fade {
-  animation: route-fade-in 0.26s cubic-bezier(0.32, 0.72, 0, 1);
+  animation: route-fade-in 0.22s ease-out;
 }
 
 @keyframes route-fade-in {
-  from { opacity: 0; transform: translateX(8px); }
-  to   { opacity: 1; transform: translateX(0); }
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
 @media (prefers-reduced-motion: reduce) {
