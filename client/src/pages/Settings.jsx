@@ -58,14 +58,24 @@ export default function Settings() {
 
   // Misc dashboard display flags
   const useFlag = (key, def) => {
-    const [v, setV] = useState(() => {
+    const readFlag = () => {
       try {
         const raw = localStorage.getItem(key);
         if (raw === '0') return false;
         if (raw === '1') return true;
       } catch {}
       return def;
-    });
+    };
+    const [v, setV] = useState(readFlag);
+    // Re-read when the home-display-changed event fires (e.g. after the
+    // background sync from server finishes), so the toggle reflects what
+    // actually got persisted instead of stale at-mount state.
+    useEffect(() => {
+      const onChange = () => setV(readFlag());
+      window.addEventListener('home-display-changed', onChange);
+      return () => window.removeEventListener('home-display-changed', onChange);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [key]);
     const setAndPersist = (val) => {
       setV(val);
       writeSetting(key, val ? '1' : '0');

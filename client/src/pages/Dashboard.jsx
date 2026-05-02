@@ -110,7 +110,19 @@ export default function Dashboard() {
   const [selectedDate, setSelectedDate] = useState(today);
   const [showPlanForm, setShowPlanForm] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
-  const [dismissedSuggestion, setDismissedSuggestion] = useState(false);
+  // Dismissed-suggestion is persisted per-day so closing it sticks across
+  // reloads; resets naturally tomorrow when the suggestion changes anyway.
+  const dismissedSuggestionKey = `dismissed-suggestion-${today}`;
+  const [dismissedSuggestion, setDismissedSuggestionState] = useState(() => {
+    try { return localStorage.getItem(dismissedSuggestionKey) === '1'; } catch { return false; }
+  });
+  const setDismissedSuggestion = (val) => {
+    setDismissedSuggestionState(val);
+    try {
+      if (val) localStorage.setItem(dismissedSuggestionKey, '1');
+      else localStorage.removeItem(dismissedSuggestionKey);
+    } catch {}
+  };
   const [showQuickActions, setShowQuickActions] = useState(() => localStorage.getItem('quick-actions-visible') !== 'false');
   const [dismissedWeekly, setDismissedWeekly] = useState(() => {
     const saved = localStorage.getItem('weekly-summary-dismissed');

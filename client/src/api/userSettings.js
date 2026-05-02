@@ -119,12 +119,25 @@ export function writeSetting(key, value) {
 // Pull the user's settings from the server and write them into localStorage
 // so the rest of the app reads them through the existing LS code paths.
 // Fires once on app boot.
+//
+// Race-aware: if a PATCH is currently pending or in-flight, we skip those
+// keys — otherwise a refresh fired right after a user toggle would clobber
+// the new local value with the older server value before the PATCH lands.
 export async function syncSettingsFromServer() {
+  // Force any debounced patch to flush before we read, so the server gives
+  // us the freshest values we just wrote.
+  if (patchTimer) {
+    clearTimeout(patchTimer);
+    patchTimer = null;
+    try { await flushPatch(); } catch {}
+  }
   try {
     const { data } = await api.get('/user-settings');
     const settings = data?.settings || {};
     let changed = false;
     for (const [key, value] of Object.entries(settings)) {
+      // Don't overwrite a key the user is in the middle of changing.
+      if (key in pendingPatch) continue;
       const local = fromServerValue(key, value);
       if (local !== null && lsRead(key) !== local) {
         lsWrite(key, local);
