@@ -81,6 +81,8 @@ export default function Settings() {
   const [compactUI, setCompactUI] = useFlag('compact-ui', false);
   const [largeText, setLargeText] = useFlag('large-text', false);
   const [shareWeight, setShareWeight] = useFlag('share-weight', false);
+  const [showLogSearch, setShowLogSearch] = useFlag('show-log-search', false);
+  const [showLogDescribe, setShowLogDescribe] = useFlag('show-log-describe', false);
 
   // Toggle the body classes that drive the actual styling so it applies live.
   useEffect(() => {
@@ -391,6 +393,37 @@ export default function Settings() {
               <div className="settings-item-sub">Last week's recap once a week.</div>
             </div>
             <button type="button" role="switch" aria-checked={showWeeklySummary} className={`settings-toggle${showWeeklySummary ? ' on' : ''}`} onClick={() => setShowWeeklySummary(!showWeeklySummary)}>
+              <span className="settings-toggle-knob" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Log page extras */}
+      <div className="settings-group">
+        <div className="settings-group-head">Log page</div>
+        <div className="card settings-card">
+          <div className="settings-item">
+            <div className="settings-item-icon" style={{ color: '#0ea5e9' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            </div>
+            <div className="settings-item-text">
+              <div className="settings-item-label">Food database search</div>
+              <div className="settings-item-sub">Show the "Search foods…" input on the Log page and Quick Log sheet.</div>
+            </div>
+            <button type="button" role="switch" aria-checked={showLogSearch} className={`settings-toggle${showLogSearch ? ' on' : ''}`} onClick={() => setShowLogSearch(!showLogSearch)}>
+              <span className="settings-toggle-knob" />
+            </button>
+          </div>
+          <div className="settings-item">
+            <div className="settings-item-icon" style={{ color: '#a855f7' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </div>
+            <div className="settings-item-text">
+              <div className="settings-item-label">"Describe it" AI input</div>
+              <div className="settings-item-sub">Show the natural-language input ("two eggs and toast").</div>
+            </div>
+            <button type="button" role="switch" aria-checked={showLogDescribe} className={`settings-toggle${showLogDescribe ? ' on' : ''}`} onClick={() => setShowLogDescribe(!showLogDescribe)}>
               <span className="settings-toggle-knob" />
             </button>
           </div>

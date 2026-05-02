@@ -19,6 +19,8 @@ const ALLOWED_KEYS = new Set([
   'compact-ui',
   'large-text',
   'share-weight',
+  'show-log-search',
+  'show-log-describe',
 ]);
 
 router.get('/', async (req, res) => {

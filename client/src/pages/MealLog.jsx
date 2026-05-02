@@ -60,6 +60,22 @@ export default function MealLog() {
   const [parsing, setParsing] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(true);
 
+  // Display flags — pulled from user-settings (default off so the page is
+  // less cluttered; user opts in via Settings → Log page).
+  const readFlag = (key) => {
+    try { return localStorage.getItem(key) === '1'; } catch { return false; }
+  };
+  const [showLogSearch, setShowLogSearch] = useState(() => readFlag('show-log-search'));
+  const [showLogDescribe, setShowLogDescribe] = useState(() => readFlag('show-log-describe'));
+  useEffect(() => {
+    const onChange = () => {
+      setShowLogSearch(readFlag('show-log-search'));
+      setShowLogDescribe(readFlag('show-log-describe'));
+    };
+    window.addEventListener('home-display-changed', onChange);
+    return () => window.removeEventListener('home-display-changed', onChange);
+  }, []);
+
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const nameInputRef = useRef(null);
@@ -482,38 +498,42 @@ export default function MealLog() {
         </button>
       </div>
 
-      {/* Describe-it natural language input */}
-      <div className="qls-describe" style={{ marginBottom: '0.85rem' }}>
-        <input
-          type="text"
-          className="qls-describe-input"
-          placeholder='Or describe it: "two eggs and toast"'
-          value={describeText}
-          onChange={(e) => setDescribeText(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleDescribe(); } }}
-          disabled={parsing}
-        />
-        <button
-          type="button"
-          className="qls-describe-go"
-          onClick={handleDescribe}
-          disabled={parsing || !describeText.trim()}
-          aria-label="Parse and add"
-        >
-          {parsing ? (
-            <span className="qls-spinner" />
-          ) : (
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M5 12h14"/><polyline points="12 5 19 12 12 19"/>
-            </svg>
-          )}
-        </button>
-      </div>
+      {/* Describe-it natural language input — opt-in via Settings → Log page */}
+      {showLogDescribe && (
+        <div className="qls-describe" style={{ marginBottom: '0.85rem' }}>
+          <input
+            type="text"
+            className="qls-describe-input"
+            placeholder='Or describe it: "two eggs and toast"'
+            value={describeText}
+            onChange={(e) => setDescribeText(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleDescribe(); } }}
+            disabled={parsing}
+          />
+          <button
+            type="button"
+            className="qls-describe-go"
+            onClick={handleDescribe}
+            disabled={parsing || !describeText.trim()}
+            aria-label="Parse and add"
+          >
+            {parsing ? (
+              <span className="qls-spinner" />
+            ) : (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M5 12h14"/><polyline points="12 5 19 12 12 19"/>
+              </svg>
+            )}
+          </button>
+        </div>
+      )}
 
-      {/* Search */}
-      <div className="card" style={{ marginBottom: '0.75rem', padding: '0.85rem 1rem' }}>
-        <FoodSearch onSelect={handleFoodSelect} onQuickAdd={quickAddFood} />
-      </div>
+      {/* Search — opt-in via Settings → Log page */}
+      {showLogSearch && (
+        <div className="card" style={{ marginBottom: '0.75rem', padding: '0.85rem 1rem' }}>
+          <FoodSearch onSelect={handleFoodSelect} onQuickAdd={quickAddFood} />
+        </div>
+      )}
 
       {/* Frequent foods removed — search and saved meals cover this */}
 

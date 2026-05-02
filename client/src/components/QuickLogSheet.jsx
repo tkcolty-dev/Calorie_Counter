@@ -322,6 +322,24 @@ export default function QuickLogSheet({ open, onClose }) {
   const recentChips = useMemo(() => topFoods.slice(0, 6), [topFoods]);
   const isBusy = logMeal.isPending || logBatch.isPending || parsing;
 
+  // Toggleable display flags from user-settings (default off).
+  const [showLogSearch, setShowLogSearch] = useState(() => {
+    try { return localStorage.getItem('show-log-search') === '1'; } catch { return false; }
+  });
+  const [showLogDescribe, setShowLogDescribe] = useState(() => {
+    try { return localStorage.getItem('show-log-describe') === '1'; } catch { return false; }
+  });
+  useEffect(() => {
+    const onChange = () => {
+      try {
+        setShowLogSearch(localStorage.getItem('show-log-search') === '1');
+        setShowLogDescribe(localStorage.getItem('show-log-describe') === '1');
+      } catch {}
+    };
+    window.addEventListener('home-display-changed', onChange);
+    return () => window.removeEventListener('home-display-changed', onChange);
+  }, []);
+
   if (!open) return null;
 
   return (
@@ -534,44 +552,55 @@ export default function QuickLogSheet({ open, onClose }) {
                     </button>
                   </div>
 
-                  {/* Type or describe */}
-                  <div className="qls-section-head">
-                    <span className="qls-section-num">2</span>
-                    <div>
-                      <div className="qls-section-title">Type it</div>
-                      <div className="qls-section-sub">Describe your meal in plain English, or search the food database.</div>
+                  {/* Type or describe — both opt-in via Settings → Log page */}
+                  {(showLogDescribe || showLogSearch) && (
+                    <div className="qls-section-head">
+                      <span className="qls-section-num">2</span>
+                      <div>
+                        <div className="qls-section-title">Type it</div>
+                        <div className="qls-section-sub">
+                          {showLogDescribe && showLogSearch
+                            ? 'Describe your meal in plain English, or search the food database.'
+                            : showLogDescribe
+                              ? 'Describe your meal in plain English.'
+                              : 'Search the food database.'}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                  <div className="qls-describe">
-                    <input
-                      type="text"
-                      className="qls-describe-input"
-                      placeholder="Or describe it: &quot;two eggs and toast&quot;"
-                      value={describeText}
-                      onChange={(e) => setDescribeText(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === 'Enter') handleDescribe(); }}
-                      disabled={isBusy}
-                    />
-                    <button
-                      className="qls-describe-go"
-                      onClick={handleDescribe}
-                      disabled={isBusy || !describeText.trim()}
-                      aria-label="Parse and log"
-                    >
-                      {parsing ? (
-                        <span className="qls-spinner" />
-                      ) : (
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M5 12h14"/><polyline points="12 5 19 12 12 19"/>
-                        </svg>
-                      )}
-                    </button>
-                  </div>
+                  )}
+                  {showLogDescribe && (
+                    <div className="qls-describe">
+                      <input
+                        type="text"
+                        className="qls-describe-input"
+                        placeholder="Or describe it: &quot;two eggs and toast&quot;"
+                        value={describeText}
+                        onChange={(e) => setDescribeText(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') handleDescribe(); }}
+                        disabled={isBusy}
+                      />
+                      <button
+                        className="qls-describe-go"
+                        onClick={handleDescribe}
+                        disabled={isBusy || !describeText.trim()}
+                        aria-label="Parse and log"
+                      >
+                        {parsing ? (
+                          <span className="qls-spinner" />
+                        ) : (
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M5 12h14"/><polyline points="12 5 19 12 12 19"/>
+                          </svg>
+                        )}
+                      </button>
+                    </div>
+                  )}
 
-                  {/* Search */}
-                  <div className="qls-search-wrap">
-                    <FoodSearch onSelect={handleQuickFood} />
-                  </div>
+                  {showLogSearch && (
+                    <div className="qls-search-wrap">
+                      <FoodSearch onSelect={handleQuickFood} />
+                    </div>
+                  )}
 
                   {/* Shortcuts header — only show if either chip group will render */}
                   {(customMeals.length > 0 || recentChips.length > 0) && (
