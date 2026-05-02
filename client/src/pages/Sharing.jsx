@@ -168,6 +168,30 @@ export default function Sharing() {
     staleTime: 1000 * 60 * 2,
   });
 
+  // Today's calorie totals for every accepted-incoming share, all in one
+  // round trip so the member list can show "1,250 cal" inline.
+  const { data: todayTotalsData } = useQuery({
+    queryKey: ['sharing-today-totals', localToday()],
+    queryFn: () => api.get('/sharing/today-totals', { params: { date: localToday() } }).then(r => r.data),
+    staleTime: 1000 * 60,
+  });
+
+  const totalsByUser = useMemo(() => {
+    const map = new Map();
+    for (const row of (todayTotalsData?.totals || [])) {
+      map.set(row.user_id, { total: row.total_calories, mealCount: row.meal_count });
+    }
+    return map;
+  }, [todayTotalsData]);
+
+  // User's daily goal (used to color the inline total)
+  const { data: goalsData } = useQuery({
+    queryKey: ['goals'],
+    queryFn: () => api.get('/goals').then(r => r.data),
+    staleTime: 1000 * 60 * 5,
+  });
+  const dailyGoal = goalsData?.daily_total || 2000;
+
   useEffect(() => {
     if (sharingData?.sharedWithMe) {
       markSharesSeen();
@@ -428,7 +452,21 @@ export default function Sharing() {
                       }}>
                         {m.username}
                       </span>
-                      <StatusPill kind={status.kind} label={status.label} />
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                        <StatusPill kind={status.kind} label={status.label} />
+                        {canExpand && totalsByUser.has(m.otherUserId) && (() => {
+                          const t = totalsByUser.get(m.otherUserId);
+                          const pct = dailyGoal > 0 ? (t.total / dailyGoal) * 100 : 0;
+                          const tone = t.total === 0
+                            ? 'idle'
+                            : pct > 100 ? 'over' : pct > 80 ? 'near' : 'ok';
+                          return (
+                            <span className={`sharing-cal-pill sharing-cal-${tone}`}>
+                              {t.total === 0 ? 'No log yet' : `${t.total.toLocaleString()} cal today`}
+                            </span>
+                          );
+                        })()}
+                      </div>
                     </div>
 
                     {isPendingInvite ? (

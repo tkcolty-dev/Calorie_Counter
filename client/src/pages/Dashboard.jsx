@@ -18,6 +18,24 @@ function greeting() {
   return 'Good evening';
 }
 
+const HOME_BUTTON_DEFAULTS = { reports: true, weight: true, goals: true, challenges: true, tasks: false, sharing: false, messages: false };
+
+function readHomeButtons() {
+  try {
+    const raw = localStorage.getItem('home-buttons');
+    return raw ? { ...HOME_BUTTON_DEFAULTS, ...JSON.parse(raw) } : HOME_BUTTON_DEFAULTS;
+  } catch { return HOME_BUTTON_DEFAULTS; }
+}
+
+function readFlag(key, def) {
+  try {
+    const v = localStorage.getItem(key);
+    if (v === '0') return false;
+    if (v === '1') return true;
+  } catch {}
+  return def;
+}
+
 function CollapsibleSection({ title, subtitle, defaultOpen = false, children, actions }) {
   const storageKey = `collapse-${title}`;
   const [open, setOpen] = useState(() => {
@@ -65,6 +83,25 @@ function formatDate(d) {
 export default function Dashboard() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
+
+  // Home-screen display settings (synced with Settings page)
+  const [homeButtons, setHomeButtons] = useState(readHomeButtons);
+  const [showStreak, setShowStreak] = useState(() => readFlag('show-streak', true));
+  const [showSuggestionBanner, setShowSuggestionBanner] = useState(() => readFlag('show-suggestion-banner', true));
+  const [showWeeklySummary, setShowWeeklySummary] = useState(() => readFlag('show-weekly-summary', true));
+  const [showQuickActionsBar, setShowQuickActionsBar] = useState(() => readFlag('show-quick-actions-bar', true));
+
+  useEffect(() => {
+    const onChange = () => {
+      setHomeButtons(readHomeButtons());
+      setShowStreak(readFlag('show-streak', true));
+      setShowSuggestionBanner(readFlag('show-suggestion-banner', true));
+      setShowWeeklySummary(readFlag('show-weekly-summary', true));
+      setShowQuickActionsBar(readFlag('show-quick-actions-bar', true));
+    };
+    window.addEventListener('home-display-changed', onChange);
+    return () => window.removeEventListener('home-display-changed', onChange);
+  }, []);
 
   const now = new Date();
   const today = formatDate(now);
@@ -235,7 +272,7 @@ export default function Dashboard() {
           <h1>{greeting()}{user?.username ? `, ${user.username}` : ''}</h1>
           <p>{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
         </div>
-        {streakData?.currentStreak > 0 && (
+        {showStreak && streakData?.currentStreak > 0 && (
           <Link to="/reports" className="streak-chip" title={`Longest: ${streakData.longestStreak} days`} style={{ textDecoration: 'none' }}>
             <svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M13.5 1c-1.6 4-4 4.7-4 8 0 1.5 1 3 2.5 3-1 0-2 1-2 2.5 0 1 .5 2 1 2.5-3-1-6-3.5-6-8C5 5 9 2 13.5 1zm3 7c.5 2 3 2.5 3 6 0 4-3 7-7.5 8 1.5-1 2-2.5 2-4 0-1-.5-1.5-1-2 1 0 1.5-.5 1.5-1.5 0-2.5-2-3-2-4.5 0-.7.6-1.6 4-2z"/></svg>
             {streakData.currentStreak} day{streakData.currentStreak !== 1 ? 's' : ''}
@@ -264,37 +301,33 @@ export default function Dashboard() {
         <span>Quick Actions</span>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={showQuickActions ? 'rotated' : ''}><polyline points="6 9 12 15 18 9"/></svg>
       </button>
-      {showQuickActions && (
-        <div className="quick-actions-bar">
-          <Link to="/reports" className="qa-bar-btn" title="Reports">
-            <span className="qa-bar-icon">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
-            </span>
-            <span className="qa-bar-label">Reports</span>
-          </Link>
-          <Link to="/weight" className="qa-bar-btn" title="Weight">
-            <span className="qa-bar-icon">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v18"/><path d="M3 12h18"/><path d="M16 7l-4-4-4 4"/><path d="M8 17l4 4 4-4"/></svg>
-            </span>
-            <span className="qa-bar-label">Weight</span>
-          </Link>
-          <Link to="/goals" className="qa-bar-btn" title="Goals">
-            <span className="qa-bar-icon">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
-            </span>
-            <span className="qa-bar-label">Goals</span>
-          </Link>
-          <Link to="/challenges" className="qa-bar-btn" title="Challenges">
-            <span className="qa-bar-icon">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
-            </span>
-            <span className="qa-bar-label">Challenges</span>
-          </Link>
-        </div>
-      )}
+      {showQuickActions && showQuickActionsBar && (() => {
+        const buttonDefs = [
+          { id: 'reports', to: '/reports', label: 'Reports', svg: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg> },
+          { id: 'weight', to: '/weight', label: 'Weight', svg: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v18"/><path d="M3 12h18"/><path d="M16 7l-4-4-4 4"/><path d="M8 17l4 4 4-4"/></svg> },
+          { id: 'goals', to: '/goals', label: 'Goals', svg: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg> },
+          { id: 'challenges', to: '/challenges', label: 'Challenges', svg: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg> },
+          { id: 'tasks', to: '/tasks', label: 'Tasks', svg: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg> },
+          { id: 'sharing', to: '/sharing', label: 'Sharing', svg: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> },
+          { id: 'messages', to: '/messages', label: 'Messages', svg: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> },
+        ];
+        const visible = buttonDefs.filter(b => homeButtons[b.id]);
+        if (visible.length === 0) return null;
+        const cols = Math.min(visible.length, 4);
+        return (
+          <div className="quick-actions-bar" style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }}>
+            {visible.map(b => (
+              <Link key={b.id} to={b.to} className="qa-bar-btn" title={b.label}>
+                <span className="qa-bar-icon">{b.svg}</span>
+                <span className="qa-bar-label">{b.label}</span>
+              </Link>
+            ))}
+          </div>
+        );
+      })()}
 
       {/* Smart suggestion banner */}
-      {suggestionData?.suggestion && !dismissedSuggestion && (
+      {showSuggestionBanner && suggestionData?.suggestion && !dismissedSuggestion && (
         <div className="card" style={{ marginBottom: '1rem', background: 'color-mix(in srgb, var(--color-primary) 5%, var(--color-surface))', border: '1px solid color-mix(in srgb, var(--color-primary) 20%, transparent)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ fontSize: '0.85rem' }}>{suggestionData.suggestion.message}</div>
@@ -321,7 +354,7 @@ export default function Dashboard() {
       )}
 
       {/* Weekly AI summary */}
-      {weeklySummary?.summary && dismissedWeekly !== weeklySummary.summary.weekOf && (
+      {showWeeklySummary && weeklySummary?.summary && dismissedWeekly !== weeklySummary.summary.weekOf && (
         <div className="card" style={{ marginBottom: '1rem', background: 'color-mix(in srgb, var(--color-success) 5%, var(--color-surface))', border: '1px solid color-mix(in srgb, var(--color-success) 20%, transparent)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>

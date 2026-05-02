@@ -39,6 +39,44 @@ export default function Settings() {
   const [resetMsg, setResetMsg] = useState('');
   const [logoutConfirm, setLogoutConfirm] = useState(false);
 
+  // Home-screen Quick Action visibility (default: 4 main buttons on)
+  const HOME_BUTTON_KEY = 'home-buttons';
+  const HOME_BUTTON_DEFAULTS = { reports: true, weight: true, goals: true, challenges: true, tasks: false, sharing: false, messages: false };
+  const [homeButtons, setHomeButtons] = useState(() => {
+    try {
+      const raw = localStorage.getItem(HOME_BUTTON_KEY);
+      return raw ? { ...HOME_BUTTON_DEFAULTS, ...JSON.parse(raw) } : HOME_BUTTON_DEFAULTS;
+    } catch { return HOME_BUTTON_DEFAULTS; }
+  });
+  const toggleHomeButton = (id) => {
+    const next = { ...homeButtons, [id]: !homeButtons[id] };
+    setHomeButtons(next);
+    try { localStorage.setItem(HOME_BUTTON_KEY, JSON.stringify(next)); } catch {}
+    window.dispatchEvent(new CustomEvent('home-display-changed'));
+  };
+
+  // Misc dashboard display flags
+  const useFlag = (key, def) => {
+    const [v, setV] = useState(() => {
+      try {
+        const raw = localStorage.getItem(key);
+        if (raw === '0') return false;
+        if (raw === '1') return true;
+      } catch {}
+      return def;
+    });
+    const setAndPersist = (val) => {
+      setV(val);
+      try { localStorage.setItem(key, val ? '1' : '0'); } catch {}
+      window.dispatchEvent(new CustomEvent('home-display-changed'));
+    };
+    return [v, setAndPersist];
+  };
+  const [showStreak, setShowStreak] = useFlag('show-streak', true);
+  const [showSuggestionBanner, setShowSuggestionBanner] = useFlag('show-suggestion-banner', true);
+  const [showWeeklySummary, setShowWeeklySummary] = useFlag('show-weekly-summary', true);
+  const [showQuickActionsBar, setShowQuickActionsBar] = useFlag('show-quick-actions-bar', true);
+
   const initialThemeApplied = useRef(false);
   useEffect(() => {
     if (!initialThemeApplied.current) {
@@ -160,6 +198,90 @@ export default function Settings() {
             ) : (
               <span className="settings-item-sub" style={{ flexShrink: 0 }}>Not supported</span>
             )}
+          </div>
+        </div>
+      </div>
+
+      {/* Home screen */}
+      <div className="settings-group">
+        <div className="settings-group-head">Home screen</div>
+        <div className="card settings-card">
+          <div className="settings-item">
+            <div className="settings-item-icon" style={{ color: '#3b82f6' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
+            </div>
+            <div className="settings-item-text">
+              <div className="settings-item-label">Show shortcut bar</div>
+              <div className="settings-item-sub">The icon row above your meals.</div>
+            </div>
+            <button type="button" role="switch" aria-checked={showQuickActionsBar} className={`settings-toggle${showQuickActionsBar ? ' on' : ''}`} onClick={() => setShowQuickActionsBar(!showQuickActionsBar)}>
+              <span className="settings-toggle-knob" />
+            </button>
+          </div>
+          {showQuickActionsBar && [
+            { id: 'reports', label: 'Reports', desc: 'Trends, streaks, charts' },
+            { id: 'weight', label: 'Weight', desc: 'Weight log over time' },
+            { id: 'goals', label: 'Goals', desc: 'Calorie & macro targets' },
+            { id: 'challenges', label: 'Challenges', desc: 'Streaks vs friends' },
+            { id: 'tasks', label: 'Tasks', desc: 'Reminders that nag' },
+            { id: 'sharing', label: 'Sharing', desc: 'Friends and groups' },
+            { id: 'messages', label: 'Messages', desc: 'Chat with sharers' },
+          ].map(b => (
+            <div className="settings-item" key={b.id}>
+              <div className="settings-item-icon" style={{ color: 'var(--color-text-secondary)', fontSize: '0.78rem', fontWeight: 700 }}>
+                <span style={{ fontSize: '0.85rem' }}>{b.label[0]}</span>
+              </div>
+              <div className="settings-item-text">
+                <div className="settings-item-label">{b.label}</div>
+                <div className="settings-item-sub">{b.desc}</div>
+              </div>
+              <button type="button" role="switch" aria-checked={!!homeButtons[b.id]} className={`settings-toggle${homeButtons[b.id] ? ' on' : ''}`} onClick={() => toggleHomeButton(b.id)}>
+                <span className="settings-toggle-knob" />
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Dashboard cards */}
+      <div className="settings-group">
+        <div className="settings-group-head">Dashboard cards</div>
+        <div className="card settings-card">
+          <div className="settings-item">
+            <div className="settings-item-icon" style={{ color: '#f97316' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z"/></svg>
+            </div>
+            <div className="settings-item-text">
+              <div className="settings-item-label">Streak chip</div>
+              <div className="settings-item-sub">Orange "X days" badge by your name.</div>
+            </div>
+            <button type="button" role="switch" aria-checked={showStreak} className={`settings-toggle${showStreak ? ' on' : ''}`} onClick={() => setShowStreak(!showStreak)}>
+              <span className="settings-toggle-knob" />
+            </button>
+          </div>
+          <div className="settings-item">
+            <div className="settings-item-icon" style={{ color: '#8b5cf6' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </div>
+            <div className="settings-item-text">
+              <div className="settings-item-label">"Your usual" suggestion</div>
+              <div className="settings-item-sub">One-tap log banner at meal times.</div>
+            </div>
+            <button type="button" role="switch" aria-checked={showSuggestionBanner} className={`settings-toggle${showSuggestionBanner ? ' on' : ''}`} onClick={() => setShowSuggestionBanner(!showSuggestionBanner)}>
+              <span className="settings-toggle-knob" />
+            </button>
+          </div>
+          <div className="settings-item">
+            <div className="settings-item-icon" style={{ color: '#16a34a' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 11h18l-2 9H5l-2-9z"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            </div>
+            <div className="settings-item-text">
+              <div className="settings-item-label">Weekly AI summary</div>
+              <div className="settings-item-sub">Last week's recap once a week.</div>
+            </div>
+            <button type="button" role="switch" aria-checked={showWeeklySummary} className={`settings-toggle${showWeeklySummary ? ' on' : ''}`} onClick={() => setShowWeeklySummary(!showWeeklySummary)}>
+              <span className="settings-toggle-knob" />
+            </button>
           </div>
         </div>
       </div>

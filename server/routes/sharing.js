@@ -38,6 +38,33 @@ router.get('/', async (req, res) => {
   }
 });
 
+// Quick today-calorie totals for everyone the requester can view (i.e. people
+// who accepted-share with them). Returns one row per accepted-incoming share
+// so the Sharing page can show inline totals without expanding each card.
+router.get('/today-totals', async (req, res) => {
+  try {
+    const date = req.query.date || new Date().toISOString().split('T')[0];
+    const result = await pool.query(
+      `SELECT s.owner_id AS user_id,
+              u.username,
+              COALESCE(SUM(m.calories), 0)::int AS total_calories,
+              COUNT(m.id)::int AS meal_count
+       FROM shares s
+       JOIN share_status ss ON ss.share_id = s.id
+       JOIN users u ON u.id = s.owner_id
+       LEFT JOIN meals m ON m.user_id = s.owner_id AND m.logged_at::date = $2::date
+       WHERE s.viewer_id = $1 AND ss.status = 'accepted'
+       GROUP BY s.owner_id, u.username
+       ORDER BY u.username`,
+      [req.userId, date]
+    );
+    res.json({ totals: result.rows });
+  } catch (err) {
+    console.error('Sharing today-totals error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // Grant access to a user
 router.post('/', async (req, res) => {
   try {
