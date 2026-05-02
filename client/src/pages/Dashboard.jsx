@@ -333,7 +333,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      <CollapsibleSection title="Planner" subtitle={selectedDayPlans.length > 0 ? `${selectedDayPlans.length} planned` : ''}>
+      <CollapsibleSection title="Planner" subtitle={selectedDayPlans.length > 0 ? `${selectedDayPlans.length} planned` : ''} defaultOpen>
         <div style={{ padding: '0.75rem' }}>
           <WeekStrip
             selectedDate={selectedDate}
