@@ -68,8 +68,12 @@ export default function Navbar() {
   const hasProfileBadge = newCount > 0;
   const [showQuickLog, setShowQuickLog] = useState(false);
   const [fabFlash, setFabFlash] = useState(null); // 'success' | 'error' | null
+  // Hint is OFF by default; user can opt-in via Settings.
   const [showFabHint, setShowFabHint] = useState(() => {
-    try { return !localStorage.getItem('fab-hint-seen'); } catch { return false; }
+    try {
+      return localStorage.getItem('fab-hint-enabled') === '1'
+        && !localStorage.getItem('fab-hint-seen');
+    } catch { return false; }
   });
   const longPressTimer = useRef(null);
   const longPressFired = useRef(false);

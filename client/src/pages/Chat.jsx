@@ -263,6 +263,16 @@ export default function Chat() {
 
   return (
     <div className="chat-container">
+      {messages.length > 0 && (
+        <div className="chat-header-bar">
+          <button type="button" className="chat-clear-btn" onClick={clearChat} aria-label="Clear chat">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/>
+            </svg>
+            <span>Clear</span>
+          </button>
+        </div>
+      )}
       <div className="chat-messages">
         {messages.length === 0 && !loading && historyLoaded && (
           <div style={{ textAlign: 'center', color: 'var(--color-text-secondary)', padding: '2rem 0' }}>
@@ -341,17 +351,6 @@ export default function Chat() {
         <button type="submit" className="btn btn-primary" disabled={!input.trim() || loading}>
           Send
         </button>
-        {messages.length > 0 && (
-          <button
-            type="button"
-            className="btn btn-secondary"
-            style={{ fontSize: '0.75rem', padding: '0.5rem' }}
-            onClick={clearChat}
-            title="Clear chat"
-          >
-            Clear
-          </button>
-        )}
       </form>
     </div>
   );

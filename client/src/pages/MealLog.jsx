@@ -534,25 +534,7 @@ export default function MealLog() {
         <FoodSearch onSelect={handleFoodSelect} onQuickAdd={quickAddFood} />
       </div>
 
-      {/* Frequent foods — one tap to add to current meal */}
-      {topFoods.length > 0 && items.length === 0 && (
-        <div style={{ marginBottom: '0.85rem' }}>
-          <div className="qls-section-label" style={{ marginTop: 0 }}>Frequent · tap to add</div>
-          <div className="qls-chip-row">
-            {topFoods.slice(0, 6).map(f => (
-              <button
-                key={f.name}
-                type="button"
-                className="qls-chip qls-chip-recent"
-                onClick={() => quickAddTopFood(f)}
-              >
-                <span className="qls-chip-name">{f.name}</span>
-                <span className="qls-chip-cal">{f.avg_calories}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* Frequent foods removed — search and saved meals cover this */}
 
       {/* Saved meals — one tap to log entire template */}
       {customMeals.length > 0 && items.length === 0 && (

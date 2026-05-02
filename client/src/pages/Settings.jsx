@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
@@ -18,20 +18,50 @@ function applyTheme(value) {
 export default function Settings() {
   const navigate = useNavigate();
   const { logout } = useAuth();
+  // Default matches main.jsx (light) so opening this page doesn't flip the
+  // theme on first visit.
   const [theme, setTheme] = useState(() => {
-    try { return localStorage.getItem(THEME_KEY) || 'auto'; } catch { return 'auto'; }
+    try { return localStorage.getItem(THEME_KEY) || 'light'; } catch { return 'light'; }
   });
   const [pushSupported] = useState(() => 'serviceWorker' in navigator && 'PushManager' in window);
   const [pushEnabled, setPushEnabled] = useState(() => {
     try { return Notification?.permission === 'granted'; } catch { return false; }
   });
+  // FAB hint toggle — off by default
+  const [fabHint, setFabHint] = useState(() => {
+    try { return localStorage.getItem('fab-hint-enabled') === '1'; } catch { return false; }
+  });
   const [resetHintConfirm, setResetHintConfirm] = useState(false);
   const [logoutConfirm, setLogoutConfirm] = useState(false);
 
+  // Only persist the theme when the user actually changes it. Otherwise
+  // first-visit users would have 'light' written to localStorage which is
+  // fine, but this also avoids reapplying on every render.
+  const initialThemeApplied = useRef(false);
   useEffect(() => {
+    if (!initialThemeApplied.current) {
+      initialThemeApplied.current = true;
+      // Don't re-apply on mount if it matches what's already on the html element
+      const current = document.documentElement.getAttribute('data-theme');
+      if (current === theme) return;
+    }
     applyTheme(theme);
     try { localStorage.setItem(THEME_KEY, theme); } catch {}
   }, [theme]);
+
+  const toggleFabHint = () => {
+    const next = !fabHint;
+    setFabHint(next);
+    try {
+      if (next) {
+        localStorage.removeItem('fab-hint-seen');
+        localStorage.setItem('fab-hint-enabled', '1');
+      } else {
+        localStorage.setItem('fab-hint-enabled', '0');
+        localStorage.setItem('fab-hint-seen', '1'); // suppress
+      }
+    } catch {}
+  };
 
   const enablePush = async () => {
     try {
@@ -108,6 +138,21 @@ export default function Settings() {
 
       <div className="card settings-section">
         <div className="settings-row-head">App</div>
+        <div className="settings-row">
+          <div className="settings-row-label-block">
+            <div className="settings-row-label">Show floating "tap to log" hint</div>
+            <div className="settings-row-sub">A bubble above the + button reminding you about hold-to-repeat. Off by default.</div>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={fabHint}
+            className={`settings-toggle${fabHint ? ' on' : ''}`}
+            onClick={toggleFabHint}
+          >
+            <span className="settings-toggle-knob" />
+          </button>
+        </div>
         <button className="settings-action" onClick={resetTutorialHints}>
           <span>Replay onboarding hints</span>
           <span className="settings-action-sub">{resetHintConfirm ? 'Reset · refresh to see' : 'Welcome card, FAB hint, etc.'}</span>
