@@ -22,10 +22,30 @@ const queryClient = new QueryClient({
   },
 });
 
-// Register service worker for push notifications
+// Register service worker for push notifications + auto-reload when a new
+// version of the SW activates (so app updates roll out without users having
+// to manually clear cache).
 if ('serviceWorker' in navigator) {
+  let didReload = false;
+  // When a new SW takes control, reload the page once so the new asset
+  // bundles are picked up.
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (didReload) return;
+    didReload = true;
+    window.location.reload();
+  });
+  // Custom message from the SW after it activates.
+  navigator.serviceWorker.addEventListener('message', (e) => {
+    if (e.data?.type === 'SW_UPDATED' && !didReload) {
+      didReload = true;
+      window.location.reload();
+    }
+  });
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(() => {});
+    navigator.serviceWorker.register('/sw.js').then((reg) => {
+      // Periodically check for updates while the tab is open
+      setInterval(() => reg.update().catch(() => {}), 60 * 60 * 1000);
+    }).catch(() => {});
   });
 }
 

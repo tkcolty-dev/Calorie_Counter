@@ -65,9 +65,34 @@ app.get('/api/health', (req, res) => {
 
 // Serve static files in production
 if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '..', 'client', 'dist')));
+  const distDir = path.join(__dirname, '..', 'client', 'dist');
+
+  // Static middleware skips index.html so the SPA catch-all below can attach
+  // no-cache headers to it. Hashed assets get long-lived immutable caching.
+  app.use(express.static(distDir, {
+    index: false,
+    setHeaders: (res, filePath) => {
+      if (filePath.includes(`${path.sep}assets${path.sep}`)) {
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        return;
+      }
+      if (filePath.endsWith('sw.js')) {
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Service-Worker-Allowed', '/');
+        return;
+      }
+      res.setHeader('Cache-Control', 'public, max-age=300, must-revalidate');
+    },
+  }));
+
   app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '..', 'client', 'dist', 'index.html'));
+    // index.html must NEVER be cached — it references hashed asset filenames
+    // that change every deploy. Caching here is what made app updates fail
+    // to roll out across devices.
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.sendFile(path.join(distDir, 'index.html'));
   });
 }
 

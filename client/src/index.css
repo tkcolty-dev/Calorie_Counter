@@ -623,28 +623,29 @@ input[type="number"] {
 
 .chat-quick-actions {
   display: flex;
-  gap: 0.5rem;
-  padding-bottom: 0.75rem;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  padding-bottom: 0.6rem;
 }
 
 .chat-quick-action {
-  flex-shrink: 0;
-  padding: 0.375rem 0.75rem;
-  border-radius: 20px;
+  padding: 0.45rem 0.85rem;
+  border-radius: 999px;
   border: 1px solid var(--color-border);
   background: var(--color-surface);
-  font-size: 0.8rem;
+  font-size: 0.82rem;
+  font-weight: 500;
   color: var(--color-text-secondary);
   cursor: pointer;
-  transition: border-color 0.15s, color 0.15s;
-  white-space: nowrap;
+  transition: all 0.15s;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.chat-quick-action:hover {
+.chat-quick-action:hover,
+.chat-quick-action:active {
   border-color: var(--color-primary);
   color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 6%, var(--color-surface));
 }
 
 /* ==================== Chat Planned Card ==================== */
@@ -1726,21 +1727,59 @@ input[type="number"] {
 }
 
 /* ==================== Quick Action Tiles (Dashboard) ==================== */
+.quick-actions-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+
 .quick-action-tile {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.8rem 0.4rem;
-  border-radius: var(--radius);
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  column-gap: 0.7rem;
+  row-gap: 0.15rem;
+  padding: 0.85rem 0.95rem;
+  border-radius: 14px;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   text-decoration: none;
-  color: var(--tile-color, var(--color-primary));
-  font-size: 0.78rem;
-  font-weight: 600;
-  transition: all 0.15s;
+  color: var(--color-text);
+  transition: transform 0.12s, box-shadow 0.18s, border-color 0.18s;
   -webkit-tap-highlight-color: transparent;
+  min-height: 64px;
+  align-content: center;
+}
+
+.quick-action-tile .qa-icon {
+  grid-row: span 2;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--tile-tint, var(--color-primary)) 14%, var(--color-surface));
+  color: var(--tile-tint, var(--color-primary));
+  align-self: center;
+}
+
+.quick-action-tile .qa-label {
+  font-size: 0.92rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+}
+
+.quick-action-tile .qa-sub {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .quick-action-tile:active {
@@ -3580,6 +3619,82 @@ input[type="number"] {
     padding: 0.55rem 1.25rem;
     white-space: nowrap;
   }
+}
+
+/* ==================== Settings page ==================== */
+.settings-section {
+  padding: 0.75rem !important;
+  margin-bottom: 0.75rem;
+}
+
+.settings-row-head {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-secondary);
+  padding: 0.2rem 0.4rem 0.5rem;
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.5rem 0.4rem;
+}
+
+.settings-row-label-block { flex: 1; min-width: 0; }
+.settings-row-label {
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+.settings-row-sub {
+  font-size: 0.78rem;
+  color: var(--color-text-secondary);
+  margin-top: 2px;
+}
+
+.settings-action {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  width: 100%;
+  padding: 0.7rem 0.4rem;
+  background: none;
+  border: none;
+  border-top: 1px solid var(--color-border);
+  text-align: left;
+  font: inherit;
+  color: var(--color-text);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.12s;
+}
+
+.settings-action:first-of-type { border-top: none; }
+.settings-action:active { background: var(--color-bg); }
+
+.settings-action > span:first-child {
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.settings-action-sub {
+  font-size: 0.78rem;
+  color: var(--color-text-secondary);
+}
+
+.settings-danger > span:first-child { color: var(--color-danger); }
+
+.settings-confirm-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.4rem;
 }
 
 /* ==================== Streak chip ==================== */
