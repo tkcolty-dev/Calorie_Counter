@@ -460,14 +460,9 @@ export default function Dashboard() {
           {mealsLoading ? (
             <div className="loading">Loading meals...</div>
           ) : meals.length === 0 ? (
-            <div style={{ textAlign: 'center', color: 'var(--color-text-secondary)', padding: '1.25rem 0.5rem' }}>
-              <div className="empty-icon" aria-hidden="true">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M3 11h18l-2 9H5l-2-9z"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                </svg>
-              </div>
-              <p style={{ marginBottom: '0.6rem', fontSize: '0.9rem' }}>Nothing logged yet — let's fix that.</p>
-              <Link to="/log" className="btn btn-primary" style={{ fontSize: '0.85rem', padding: '0.6rem 1.15rem', display: 'inline-flex' }}>
+            <div className="meal-empty-state" style={{ textAlign: 'center', color: 'var(--color-text-secondary)' }}>
+              <p>Nothing logged yet — let's fix that.</p>
+              <Link to="/log" className="btn btn-primary meal-empty-cta">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                 Log a meal
               </Link>

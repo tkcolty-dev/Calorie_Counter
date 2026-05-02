@@ -51,18 +51,65 @@ html {
 }
 
 /* ==================== Density: Compact ==================== */
-.ui-compact .card { padding: 0.85rem; }
-.ui-compact .collapsible-header { padding: 0.55rem 0.7rem; }
-.ui-compact .meal-table-item { padding: 0.5rem 0.7rem; }
-.ui-compact .qa-bar-btn { padding: 0.45rem 0.35rem 0.4rem; min-height: 56px; }
-.ui-compact .qa-bar-icon { width: 30px; height: 30px; }
-.ui-compact .form-group { margin-bottom: 0.5rem; }
-.ui-compact .meal-items-list { padding: 0.45rem 0.55rem; }
+/* Goal: fit dashboard (greeting, calorie bar, quick actions, planner card,
+   meals card, recent history) without scrolling on a 390x844 phone. */
+.ui-compact { font-size: 13px; }
+.ui-compact .app-main { padding-top: 0.4rem; }
+.ui-compact .card { padding: 0.5rem 0.6rem; }
+.ui-compact .meal-table-rows { border-top: none; }
+.ui-compact .meal-empty-state { padding: 0.4rem 0.4rem; }
+.ui-compact .meal-empty-state p { font-size: 0.78rem; margin-bottom: 0.35rem; }
+.ui-compact .meal-empty-cta { padding: 0.35rem 0.75rem; font-size: 0.75rem; }
+.ui-compact .meal-empty-cta svg { width: 12px; height: 12px; }
+.ui-compact .meal-table-row-cal-unit { font-size: 0.65rem; }
+.ui-compact .week-strip-day { padding: 0.2rem 0.15rem; }
+.ui-compact .week-strip-day-label { font-size: 0.55rem; }
+.ui-compact .week-strip-day-num { font-size: 0.78rem; }
+.ui-compact .week-strip-arrow { min-width: 28px; min-height: 28px; padding: 0.25rem 0.45rem; font-size: 1rem; }
+.ui-compact .collapsible-section { margin-bottom: 0.4rem; }
+.ui-compact .collapsible-header { padding: 0.45rem 0.6rem; }
+.ui-compact .collapsible-title { font-size: 0.9rem; }
+.ui-compact .meal-table-section { margin-bottom: 0.3rem; }
+.ui-compact .meal-table-header { padding: 0.45rem 0.7rem; }
+.ui-compact .meal-table-header-label { font-size: 0.88rem; }
+.ui-compact .meal-table-item { padding: 0.4rem 0.7rem; }
+.ui-compact .meal-table-row-name { font-size: 0.85rem; }
+.ui-compact .meal-table-row-cal { font-size: 0.95rem; }
+.ui-compact .meal-table-row-meta { font-size: 0.7rem; }
+.ui-compact .qa-bar-btn { padding: 0.35rem 0.3rem 0.3rem; min-height: 48px; gap: 0.18rem; }
+.ui-compact .qa-bar-icon { width: 26px; height: 26px; border-radius: 8px; }
+.ui-compact .qa-bar-icon svg { width: 16px; height: 16px; }
+.ui-compact .qa-bar-label { font-size: 0.66rem; }
+.ui-compact .quick-actions-bar { gap: 0.35rem; margin-bottom: 0.55rem; }
+.ui-compact .quick-actions-toggle { padding: 0.35rem 0.25rem; min-height: 32px; }
+.ui-compact .form-group { margin-bottom: 0.4rem; }
+.ui-compact .form-group input,
+.ui-compact .form-group select,
+.ui-compact .form-group textarea { padding: 0.45rem 0.6rem; }
+.ui-compact .form-group label { margin-bottom: 0.18rem; font-size: 0.78rem; }
+.ui-compact .meal-items-list { padding: 0.4rem 0.5rem; margin-bottom: 0.5rem; }
+.ui-compact .meal-item-row { padding: 0.32rem 0.45rem; }
 .ui-compact .settings-item,
-.ui-compact .settings-link-row { padding: 0.6rem 0.7rem; }
-.ui-compact .dash-greeting { margin-bottom: 0.55rem; }
-.ui-compact .page-header { margin-bottom: 0.65rem; }
-.ui-compact .qls-progress { padding: 0.45rem 0.7rem; margin-bottom: 0.55rem; }
+.ui-compact .settings-link-row { padding: 0.55rem 0.65rem; gap: 0.55rem; }
+.ui-compact .settings-group { margin-bottom: 0.6rem; }
+.ui-compact .settings-group-head { padding: 0 0.5rem 0.32rem; font-size: 0.66rem; }
+.ui-compact .settings-item-label { font-size: 0.86rem; }
+.ui-compact .settings-item-sub { font-size: 0.72rem; }
+.ui-compact .settings-item-icon { width: 28px; height: 28px; }
+.ui-compact .dash-greeting { margin-bottom: 0.4rem; }
+.ui-compact .dash-greeting-text h1 { font-size: 1.15rem; }
+.ui-compact .dash-greeting-text p { font-size: 0.75rem; }
+.ui-compact .page-header { margin-bottom: 0.5rem; }
+.ui-compact .page-header h1 { font-size: 1.15rem; }
+.ui-compact .qls-progress { padding: 0.4rem 0.6rem; margin-bottom: 0.45rem; }
+.ui-compact .qls-meal-pill { padding: 0.4rem 0.3rem; font-size: 0.72rem; }
+.ui-compact .qls-method { padding: 0.55rem 0.3rem; min-height: 56px; font-size: 0.72rem; }
+.ui-compact .qls-method svg { width: 18px; height: 18px; }
+.ui-compact .qls-section-head { margin: 0.55rem 0 0.3rem; }
+.ui-compact .empty-icon { width: 36px; height: 36px; margin-bottom: 0.3rem; }
+.ui-compact .empty-icon svg { width: 18px; height: 18px; }
+.ui-compact .meal-empty-state { padding: 0.55rem 0.4rem; }
+.ui-compact .meal-empty-state p { font-size: 0.78rem; margin-bottom: 0.4rem; }
 
 /* ==================== Density: Large Text ==================== */
 /* Scales the root font-size — every rem-based value picks it up. */
@@ -105,6 +152,20 @@ html {
   background: color-mix(in srgb, var(--color-primary) 10%, var(--color-surface));
   color: var(--color-primary);
   margin-bottom: 0.6rem;
+}
+
+/* Meals "Nothing logged yet" empty state — small + tappable */
+.meal-empty-state {
+  padding: 0.7rem 0.6rem;
+}
+.meal-empty-state p {
+  font-size: 0.85rem;
+  margin-bottom: 0.55rem;
+}
+.meal-empty-cta {
+  font-size: 0.82rem;
+  padding: 0.5rem 1rem;
+  display: inline-flex;
 }
 
 a {
