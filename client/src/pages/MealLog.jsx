@@ -82,27 +82,8 @@ export default function MealLog() {
   });
   const suggestion = suggestionData?.suggestion || null;
 
-  // Debounced combined search on the Food name input — local DB + Open Food
-  // Facts in parallel, with images. Replaces the old local-only "calorie hint"
-  // shortlist so users see the same rich results everywhere.
-  const searchSeq = useRef(0);
-  useEffect(() => {
-    if (name.length < 2) {
-      setCalorieHints([]);
-      return;
-    }
-    const seq = ++searchSeq.current;
-    const timer = setTimeout(async () => {
-      try {
-        const merged = await searchFoodsCombined(name, { localLimit: 4, brandedCap: 6 });
-        if (seq !== searchSeq.current) return;
-        setCalorieHints(merged.slice(0, 8));
-      } catch {
-        if (seq === searchSeq.current) setCalorieHints([]);
-      }
-    }, 180);
-    return () => clearTimeout(timer);
-  }, [name]);
+  // (Auto-search on the custom-name input was removed — the FoodSearch card
+  // above is now the single source of search. Reduces duplicated UI.)
 
   const { data: customMeals = [] } = useQuery({
     queryKey: ['custom-meals'],
@@ -731,6 +712,9 @@ export default function MealLog() {
             {items.length > 0 ? 'Add another item' : 'Add an item'}
           </div>
 
+          {/* Plain custom-name input. The auto-search has been removed —
+              the FoodSearch above is the single source of search. This input
+              is purely for typing a custom meal that's not in any database. */}
           <div className="form-group">
             <label htmlFor="name">Food name</label>
             <input
@@ -739,34 +723,9 @@ export default function MealLog() {
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Grilled chicken salad"
+              placeholder="Custom item — type and add calories below"
               autoComplete="off"
             />
-            {calorieHints.length > 0 && (
-              <div className="calorie-hint calorie-hint-rich">
-                {calorieHints.map((food) => (
-                  <button
-                    key={food.id}
-                    type="button"
-                    className="calorie-hint-item-rich"
-                    onClick={() => {
-                      handleFoodSelect(food);
-                      setCalorieHints([]);
-                    }}
-                  >
-                    <FoodThumb food={food} size={36} />
-                    <div className="hint-body">
-                      <div className="hint-name">{food.name}</div>
-                      <div className="hint-meta">
-                        {food.brand && <span className="food-brand-badge">{food.brand}</span>}
-                        <span>{food.serving_size}</span>
-                      </div>
-                    </div>
-                    <div className="hint-cal">{food.calories_per_serving} cal</div>
-                  </button>
-                ))}
-              </div>
-            )}
           </div>
 
           {baseCal !== null && (

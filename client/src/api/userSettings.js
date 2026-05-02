@@ -58,7 +58,9 @@ function fromServerValue(key, value) {
 
 let pendingPatch = {};
 let patchTimer = null;
-const FLUSH_MS = 600;
+// Coalesce a tiny window of rapid changes into a single request, but stay
+// short enough that navigating away after a single toggle still flushes.
+const FLUSH_MS = 80;
 
 async function flushPatch() {
   patchTimer = null;
@@ -70,6 +72,32 @@ async function flushPatch() {
   } catch {
     // Quiet fail — local cache stays correct, retry on next change.
   }
+}
+
+// Last-resort flush: if a patch is still pending when the tab is being
+// closed/navigated, fire it synchronously via sendBeacon so it actually
+// reaches the server. The Authorization header isn't supported on Beacon,
+// but the cookie/JWT goes via the existing Beacon to /api/user-settings
+// which still has the auth middleware — so we fall back to sync XHR with
+// the auth header instead.
+function flushOnUnload() {
+  if (Object.keys(pendingPatch).length === 0) return;
+  try {
+    const token = (() => { try { return localStorage.getItem('token'); } catch { return null; } })();
+    if (!token) return;
+    const xhr = new XMLHttpRequest();
+    xhr.open('PATCH', '/api/user-settings', false); // sync — only OK at unload
+    xhr.setRequestHeader('Content-Type', 'application/json');
+    xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+    xhr.send(JSON.stringify(pendingPatch));
+    pendingPatch = {};
+  } catch {}
+}
+if (typeof window !== 'undefined') {
+  window.addEventListener('pagehide', flushOnUnload);
+  window.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') flushOnUnload();
+  });
 }
 
 // Public API ------------------------------------------------------------
