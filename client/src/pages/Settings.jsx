@@ -76,6 +76,7 @@ export default function Settings() {
   const [showSuggestionBanner, setShowSuggestionBanner] = useFlag('show-suggestion-banner', true);
   const [showWeeklySummary, setShowWeeklySummary] = useFlag('show-weekly-summary', true);
   const [showQuickActionsBar, setShowQuickActionsBar] = useFlag('show-quick-actions-bar', true);
+  const [showPlanner, setShowPlanner] = useFlag('show-planner', true);
 
   const initialThemeApplied = useRef(false);
   useEffect(() => {
@@ -247,6 +248,18 @@ export default function Settings() {
       <div className="settings-group">
         <div className="settings-group-head">Dashboard cards</div>
         <div className="card settings-card">
+          <div className="settings-item">
+            <div className="settings-item-icon" style={{ color: '#0ea5e9' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            </div>
+            <div className="settings-item-text">
+              <div className="settings-item-label">Planner</div>
+              <div className="settings-item-sub">Week strip + planned meals card.</div>
+            </div>
+            <button type="button" role="switch" aria-checked={showPlanner} className={`settings-toggle${showPlanner ? ' on' : ''}`} onClick={() => setShowPlanner(!showPlanner)}>
+              <span className="settings-toggle-knob" />
+            </button>
+          </div>
           <div className="settings-item">
             <div className="settings-item-icon" style={{ color: '#f97316' }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z"/></svg>

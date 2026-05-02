@@ -90,6 +90,7 @@ export default function Dashboard() {
   const [showSuggestionBanner, setShowSuggestionBanner] = useState(() => readFlag('show-suggestion-banner', true));
   const [showWeeklySummary, setShowWeeklySummary] = useState(() => readFlag('show-weekly-summary', true));
   const [showQuickActionsBar, setShowQuickActionsBar] = useState(() => readFlag('show-quick-actions-bar', true));
+  const [showPlanner, setShowPlanner] = useState(() => readFlag('show-planner', true));
 
   useEffect(() => {
     const onChange = () => {
@@ -98,6 +99,7 @@ export default function Dashboard() {
       setShowSuggestionBanner(readFlag('show-suggestion-banner', true));
       setShowWeeklySummary(readFlag('show-weekly-summary', true));
       setShowQuickActionsBar(readFlag('show-quick-actions-bar', true));
+      setShowPlanner(readFlag('show-planner', true));
     };
     window.addEventListener('home-display-changed', onChange);
     return () => window.removeEventListener('home-display-changed', onChange);
@@ -378,6 +380,7 @@ export default function Dashboard() {
         </div>
       )}
 
+      {showPlanner && (
       <CollapsibleSection title="Planner" subtitle={selectedDayPlans.length > 0 ? `${selectedDayPlans.length} planned` : ''} defaultOpen>
         <div style={{ padding: '0.75rem' }}>
           <WeekStrip
@@ -397,6 +400,7 @@ export default function Dashboard() {
           </div>
         )}
       </CollapsibleSection>
+      )}
 
       <CollapsibleSection
         title="Meals"
