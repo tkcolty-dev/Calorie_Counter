@@ -17,12 +17,22 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // Pulls the server-side settings into localStorage and notifies UI.
+  // Lives here (not main.jsx) so it re-fires on every fresh login, not just
+  // on first app boot.
+  const syncSettings = async () => {
+    try {
+      const mod = await import('../api/userSettings');
+      await mod.syncSettingsFromServer();
+    } catch {}
+  };
+
   useEffect(() => {
     const token = safeGet('token');
     if (token) {
       setAuthToken(token);
       api.get('/auth/me')
-        .then(res => setUser(res.data.user))
+        .then(res => { setUser(res.data.user); syncSettings(); })
         .catch(() => { safeRemove('token'); setAuthToken(null); })
         .finally(() => setLoading(false));
     } else {
@@ -35,6 +45,7 @@ export function AuthProvider({ children }) {
     safeSet('token', res.data.token);
     setAuthToken(res.data.token);
     setUser(res.data.user);
+    syncSettings();
     return res.data;
   };
 
@@ -43,6 +54,7 @@ export function AuthProvider({ children }) {
     safeSet('token', res.data.token);
     setAuthToken(res.data.token);
     setUser(res.data.user);
+    syncSettings();
     return res.data;
   };
 

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import BackHeader from '../components/BackHeader';
+import { writeSetting, resetServerSettings } from '../api/userSettings';
 
 const THEME_KEY = 'theme';
 const themes = [
@@ -51,7 +52,7 @@ export default function Settings() {
   const toggleHomeButton = (id) => {
     const next = { ...homeButtons, [id]: !homeButtons[id] };
     setHomeButtons(next);
-    try { localStorage.setItem(HOME_BUTTON_KEY, JSON.stringify(next)); } catch {}
+    writeSetting(HOME_BUTTON_KEY, JSON.stringify(next));
     window.dispatchEvent(new CustomEvent('home-display-changed'));
   };
 
@@ -67,7 +68,7 @@ export default function Settings() {
     });
     const setAndPersist = (val) => {
       setV(val);
-      try { localStorage.setItem(key, val ? '1' : '0'); } catch {}
+      writeSetting(key, val ? '1' : '0');
       window.dispatchEvent(new CustomEvent('home-display-changed'));
     };
     return [v, setAndPersist];
@@ -86,20 +87,16 @@ export default function Settings() {
       if (current === theme) return;
     }
     applyTheme(theme);
-    try { localStorage.setItem(THEME_KEY, theme); } catch {}
+    writeSetting(THEME_KEY, theme);
   }, [theme]);
 
   const toggleFabHint = () => {
     const next = !fabHint;
     setFabHint(next);
+    writeSetting('fab-hint-enabled', next ? '1' : '0');
     try {
-      if (next) {
-        localStorage.removeItem('fab-hint-seen');
-        localStorage.setItem('fab-hint-enabled', '1');
-      } else {
-        localStorage.setItem('fab-hint-enabled', '0');
-        localStorage.setItem('fab-hint-seen', '1');
-      }
+      if (next) localStorage.removeItem('fab-hint-seen');
+      else localStorage.setItem('fab-hint-seen', '1');
     } catch {}
   };
 
@@ -180,6 +177,9 @@ export default function Settings() {
     setShowQuickActionsBar(true);
     setShowPlanner(true);
     window.dispatchEvent(new CustomEvent('home-display-changed'));
+    // Tell the server to drop the saved blob too so other devices get the
+    // reset state on their next sync.
+    resetServerSettings();
     setResetAllConfirm(false);
     setResetAllMsg('All settings restored to defaults');
     setTimeout(() => setResetAllMsg(''), 2500);

@@ -30,6 +30,13 @@ import('./api/client').then(({ default: api }) => {
   api.get('/version').catch(() => {});
 }).catch(() => {});
 
+// Pull saved settings from the server so a returning user gets the same
+// theme / home-screen layout / dashboard toggles on every device. No-op
+// if not authenticated yet; AuthContext re-triggers it on login.
+import('./api/userSettings').then(({ syncSettingsFromServer }) => {
+  syncSettingsFromServer();
+}).catch(() => {});
+
 // Register service worker for push notifications + auto-reload when a new
 // version of the SW activates (so app updates roll out without users having
 // to manually clear cache).

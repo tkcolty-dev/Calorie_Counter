@@ -35,6 +35,7 @@ const avatarsRoutes = require('./routes/avatars');
 const voiceLogRoutes = require('./routes/voice-log');
 const chatHistoryRoutes = require('./routes/chat-history');
 const tasksRoutes = require('./routes/tasks');
+const userSettingsRoutes = require('./routes/user-settings');
 const { startMealReminders } = require('./services/mealReminder');
 const { startTaskReminders } = require('./services/taskReminder');
 
@@ -77,6 +78,7 @@ app.use('/api/avatars', avatarsRoutes);
 app.use('/api/voice-log', voiceLogRoutes);
 app.use('/api/chat-history', chatHistoryRoutes);
 app.use('/api/tasks', tasksRoutes);
+app.use('/api/user-settings', userSettingsRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
