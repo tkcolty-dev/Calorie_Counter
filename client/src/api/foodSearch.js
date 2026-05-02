@@ -65,6 +65,47 @@ export function mergeResults(localRes, offResults, brandedCap = 15) {
   return merged;
 }
 
+// Borrow an image from OFF products whose name overlaps with the local food
+// name. The local food DB ships without images (just names + calories), but
+// OFF products always carry an image. For "BBQ Chicken Pizza" (local), this
+// attaches the image of any OFF product whose name contains those same
+// tokens — close enough to look like a real photo of that dish.
+function tokenize(s) {
+  return new Set(
+    String(s || '')
+      .toLowerCase()
+      .replace(/[()\-/,]/g, ' ')
+      .split(/\s+/)
+      .filter(t => t.length >= 3)
+  );
+}
+
+function attachImagesToLocal(localList, offList) {
+  if (!Array.isArray(localList) || !Array.isArray(offList) || offList.length === 0) {
+    return localList || [];
+  }
+  return localList.map(l => {
+    if (l.image_url) return l;
+    const lt = tokenize(l.name);
+    if (lt.size === 0) return l;
+    let best = null;
+    let bestOverlap = 0;
+    for (const o of offList) {
+      if (!o.image_url) continue;
+      const ot = tokenize(o.name);
+      let overlap = 0;
+      for (const t of ot) if (lt.has(t)) overlap++;
+      if (overlap > bestOverlap) { best = o; bestOverlap = overlap; }
+    }
+    // One overlapping food-noun is enough — even a generic "pizza" photo
+    // beats a letter avatar. Tokens are already filtered to length >= 3.
+    if (best && bestOverlap >= 1) {
+      return { ...l, image_url: best.image_url };
+    }
+    return l;
+  });
+}
+
 // One-shot combined search — local DB + OFF in parallel, with images.
 export async function searchFoodsCombined(query, { localLimit = 6, brandedCap = 6 } = {}) {
   if (!query || query.length < 2) return [];
@@ -73,5 +114,6 @@ export async function searchFoodsCombined(query, { localLimit = 6, brandedCap = 
     searchOFF(query).catch(() => []),
   ]);
   const local = (localRes || []).slice(0, localLimit);
-  return mergeResults(local, offRes || [], brandedCap);
+  const enriched = attachImagesToLocal(local, offRes || []);
+  return mergeResults(enriched, offRes || [], brandedCap);
 }

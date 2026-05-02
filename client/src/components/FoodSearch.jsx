@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import api from '../api/client';
-import { searchOFF, mergeResults } from '../api/foodSearch';
+import { searchOFF, mergeResults, searchFoodsCombined } from '../api/foodSearch';
 
 export default function FoodSearch({ onSelect, onQuickAdd }) {
   const [query, setQuery] = useState('');
@@ -25,21 +25,10 @@ export default function FoodSearch({ onSelect, onQuickAdd }) {
 
     const timer = setTimeout(async () => {
       try {
-        const localPromise = api.get('/foods', { params: { q: query } }).then((r) => r.data);
-        const offPromise = searchOFF(query);
-
-        const localRes = await localPromise;
+        // Use the shared combined search so local foods get OFF images
+        // attached and we don't duplicate the merge/enrichment logic.
+        const merged = await searchFoodsCombined(query, { localLimit: 8, brandedCap: 15 });
         if (searchId.current !== currentSearch) return;
-
-        if (localRes.length > 0) {
-          setResults(localRes);
-          setOpen(true);
-        }
-
-        const offResults = await offPromise;
-        if (searchId.current !== currentSearch) return;
-
-        const merged = mergeResults(localRes, offResults);
         setResults(merged);
         setOpen(true);
       } catch {
