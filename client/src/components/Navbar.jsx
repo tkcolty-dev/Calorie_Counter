@@ -1,12 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
 import { useNewShares } from '../hooks/useNewShares';
 import { useNewMessages } from '../hooks/useNewMessages';
 import MessageToast from './MessageToast';
 import MealLoggedToast from './MealLoggedToast';
-import QuickLogSheet from './QuickLogSheet';
 import api from '../api/client';
 
 function nowLocalISO() {
@@ -66,7 +65,6 @@ export default function Navbar() {
   const { newCount } = useNewShares();
   const { latestMessage } = useNewMessages();
   const hasProfileBadge = newCount > 0;
-  const [showQuickLog, setShowQuickLog] = useState(false);
   const [fabFlash, setFabFlash] = useState(null); // 'success' | 'error' | null
   // Hint is OFF by default; user can opt-in via Settings.
   const [showFabHint, setShowFabHint] = useState(() => {
@@ -81,58 +79,17 @@ export default function Navbar() {
   // Hide FAB on the full log page (redundant) and on chat (covers chat input)
   const hideFab = location.pathname === '/log' || location.pathname === '/chat' || location.pathname.startsWith('/messages');
 
-  // Auto-open the quick-log sheet on dashboard if it's near a meal time
-  // and that meal hasn't been logged today, OR if the URL has ?quicklog=
-  // (deep-link from a meal reminder push notification).
-  const { data: autoSuggestion } = useQuery({
-    queryKey: ['suggestion-autonag'],
-    queryFn: () => {
-      const today = new Date();
-      const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-      return api.get('/suggestions', { params: { today: todayStr, hour: today.getHours() } }).then(r => r.data);
-    },
-    enabled: location.pathname === '/' && !showQuickLog,
-    staleTime: 1000 * 60 * 5,
-  });
-
+  // Push-notification deep-link: ?quicklog=lunch sends user to /log.
   useEffect(() => {
     if (autoOpenedRef.current) return;
-
-    // Path 1: deep-link from a push notification (?quicklog=lunch etc.)
     const params = new URLSearchParams(location.search);
     if (params.has('quicklog')) {
       autoOpenedRef.current = true;
-      setShowQuickLog(true);
-      // Clean the URL so a refresh doesn't keep popping it
       const cleaned = location.pathname + location.hash;
       window.history.replaceState({}, '', cleaned);
-      return;
+      navigate('/log');
     }
-
-    // Path 2: in-app auto-open near a meal time, once per meal-window per day
-    if (location.pathname !== '/') return;
-    if (!autoSuggestion?.suggestion) return;
-
-    const now = new Date();
-    const hour = now.getHours();
-    const isMealWindow =
-      (hour >= 8 && hour < 10) ||   // breakfast window
-      (hour >= 12 && hour < 14) ||  // lunch window
-      (hour >= 18 && hour < 20);    // dinner window
-    if (!isMealWindow) return;
-
-    const dayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-    const seenKey = `auto-prompt-${dayKey}-${autoSuggestion.suggestion.meal_type}`;
-    try {
-      if (localStorage.getItem(seenKey)) return;
-      localStorage.setItem(seenKey, '1');
-    } catch {}
-
-    autoOpenedRef.current = true;
-    // Small delay so the dashboard renders first
-    const t = setTimeout(() => setShowQuickLog(true), 800);
-    return () => clearTimeout(t);
-  }, [location.pathname, location.search, autoSuggestion, showQuickLog]);
+  }, [location.pathname, location.search, navigate]);
 
   const repeatLastMeal = async () => {
     longPressFired.current = true;
@@ -196,7 +153,7 @@ export default function Navbar() {
       try { localStorage.setItem('fab-hint-seen', '1'); } catch {}
       setShowFabHint(false);
     }
-    setShowQuickLog(true);
+    navigate('/log');
   };
 
   return (
@@ -297,7 +254,6 @@ export default function Navbar() {
         </button>
       )}
 
-      <QuickLogSheet open={showQuickLog} onClose={() => setShowQuickLog(false)} />
     </>
   );
 }

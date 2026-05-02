@@ -51,12 +51,15 @@ export default function WelcomeTutorial() {
   const [step, setStep] = useState(0);
   const [visible, setVisible] = useState(false);
 
+  // Only show when the user explicitly asked for it via Settings → Replay
+  // onboarding hints (which sets 'tutorial-replay' = '1'). Never auto-shows
+  // on login or first visit.
   useEffect(() => {
-    if (!localStorage.getItem(TUTORIAL_KEY)) {
-      // Small delay so dashboard renders first
-      const t = setTimeout(() => setVisible(true), 600);
-      return () => clearTimeout(t);
-    }
+    let replay = false;
+    try { replay = localStorage.getItem('tutorial-replay') === '1'; } catch {}
+    if (!replay) return;
+    const t = setTimeout(() => setVisible(true), 400);
+    return () => clearTimeout(t);
   }, []);
 
   if (!visible) return null;
@@ -65,7 +68,11 @@ export default function WelcomeTutorial() {
   const isLast = step === steps.length - 1;
 
   const finish = () => {
-    localStorage.setItem(TUTORIAL_KEY, 'true');
+    try {
+      localStorage.setItem(TUTORIAL_KEY, 'true');
+      // Clear the replay flag so it doesn't fire again on next reload
+      localStorage.removeItem('tutorial-replay');
+    } catch {}
     setVisible(false);
   };
 

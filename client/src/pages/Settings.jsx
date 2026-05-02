@@ -168,11 +168,14 @@ export default function Settings() {
       localStorage.removeItem('tutorial-shown');
       localStorage.removeItem('fab-hint-seen');
       localStorage.removeItem('quick-actions-visible');
+      // Explicit opt-in flag the WelcomeTutorial reads. Without this, the
+      // tutorial never shows on its own.
+      localStorage.setItem('tutorial-replay', '1');
       Object.keys(localStorage).forEach(k => {
         if (k.startsWith('auto-prompt-')) localStorage.removeItem(k);
       });
     } catch {}
-    setResetMsg('Hints reset · refresh to see them again');
+    setResetMsg('Hints will replay on next dashboard load');
     setTimeout(() => setResetMsg(''), 2200);
   };
 
