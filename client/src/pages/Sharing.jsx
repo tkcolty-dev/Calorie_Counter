@@ -5,6 +5,7 @@ import MealCard from '../components/MealCard';
 import CalorieBudgetBar from '../components/CalorieBudgetBar';
 import FoodSearch from '../components/FoodSearch';
 import WeekStrip from '../components/WeekStrip';
+import LineChart from '../components/charts/LineChart';
 import { markSharesSeen } from '../hooks/useNewShares';
 import Leaderboard from '../components/Leaderboard';
 import { useAuth } from '../context/AuthContext';
@@ -155,6 +156,7 @@ export default function Sharing() {
   const [username, setUsername] = useState('');
   const [error, setError] = useState('');
   const [expandedUserId, setExpandedUserId] = useState(null);
+  const [expandedTab, setExpandedTab] = useState('day'); // 'day' | 'weight'
   const [viewDate, setViewDate] = useState(localToday());
   const [slideDir, setSlideDir] = useState('right');
   const [commentText, setCommentText] = useState('');
@@ -183,6 +185,21 @@ export default function Sharing() {
     }
     return map;
   }, [todayTotalsData]);
+
+  // Weight summary — only includes owners who opted in to share-weight.
+  const { data: weightSummaryData } = useQuery({
+    queryKey: ['sharing-weight-summary'],
+    queryFn: () => api.get('/sharing/weight-summary').then(r => r.data),
+    staleTime: 1000 * 60 * 2,
+  });
+
+  const weightByUser = useMemo(() => {
+    const map = new Map();
+    for (const row of (weightSummaryData?.summary || [])) {
+      map.set(row.user_id, row);
+    }
+    return map;
+  }, [weightSummaryData]);
 
   // User's daily goal (used to color the inline total)
   const { data: goalsData } = useQuery({
@@ -466,6 +483,31 @@ export default function Sharing() {
                             </span>
                           );
                         })()}
+                        {canExpand && weightByUser.has(m.otherUserId) && (() => {
+                          const w = weightByUser.get(m.otherUserId);
+                          if (w.current_weight == null) return null;
+                          const lbs = w.current_weight;
+                          let label = `${lbs.toFixed(1)} lbs`;
+                          let tone = 'idle';
+                          if (w.lbs_to_goal != null) {
+                            if (w.lbs_to_goal <= 0) {
+                              label = `${lbs.toFixed(1)} lbs · goal hit`;
+                              tone = 'ok';
+                            } else {
+                              label = `${lbs.toFixed(1)} lbs · ${w.lbs_to_goal.toFixed(1)} to goal`;
+                              tone = 'near';
+                            }
+                          }
+                          if (w.delta_since_last != null && w.delta_since_last !== 0) {
+                            const sign = w.delta_since_last < 0 ? '−' : '+';
+                            label += ` (${sign}${Math.abs(w.delta_since_last).toFixed(1)})`;
+                          }
+                          return (
+                            <span className={`sharing-cal-pill sharing-weight-${tone}`} title="Tap row to expand chart">
+                              {label}
+                            </span>
+                          );
+                        })()}
                       </div>
                     </div>
 
@@ -509,6 +551,26 @@ export default function Sharing() {
                   {/* Expanded view */}
                   {isExpanded && canExpand && (
                     <div className="sharing-member-expanded" style={{ borderTop: '1px solid var(--color-border)', padding: '0.85rem' }}>
+                      {/* View tab toggle (only show Weight when the owner opted in) */}
+                      {weightByUser.has(m.otherUserId) && (
+                        <div className="sharing-view-tabs">
+                          <button
+                            type="button"
+                            className={`sharing-view-tab${expandedTab === 'day' ? ' active' : ''}`}
+                            onClick={() => setExpandedTab('day')}
+                          >Day</button>
+                          <button
+                            type="button"
+                            className={`sharing-view-tab${expandedTab === 'weight' ? ' active' : ''}`}
+                            onClick={() => setExpandedTab('weight')}
+                          >Weight</button>
+                        </div>
+                      )}
+
+                      {expandedTab === 'weight' && weightByUser.has(m.otherUserId) ? (
+                        <SharedWeightChart userId={m.otherUserId} username={m.username} summary={weightByUser.get(m.otherUserId)} />
+                      ) : (<>
+
                       {/* Planned meals toggle (sharing direction back) */}
                       {m.outgoing?.status === 'accepted' && (
                         <label style={{
@@ -692,6 +754,8 @@ export default function Sharing() {
                         </div>
                       )}
 
+                      </>)}
+
                       {/* Footer remove */}
                       <div style={{ marginTop: '1rem', paddingTop: '0.75rem', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'flex-end' }}>
                         <button
@@ -713,6 +777,80 @@ export default function Sharing() {
       </div>
 
       {members.some(m => m.incoming?.status === 'accepted') && <Leaderboard />}
+    </div>
+  );
+}
+
+function SharedWeightChart({ userId, username, summary }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ['sharing-weight-history', userId],
+    queryFn: () => api.get(`/sharing/${userId}/weight-history`, { params: { days: 90 } }).then(r => r.data),
+    staleTime: 1000 * 60,
+  });
+
+  const entries = data?.entries || [];
+  const target = data?.target_weight ?? summary?.target_weight ?? null;
+  const chartData = entries.map(e => ({
+    weight_lbs: e.weight_lbs,
+    label: new Date(
+      (typeof e.logged_date === 'string' ? e.logged_date.split('T')[0] : e.logged_date) + 'T12:00:00'
+    ).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+  }));
+
+  const cur = summary?.current_weight ?? null;
+  const lbsToGoal = summary?.lbs_to_goal ?? null;
+  const delta = summary?.delta_since_last ?? null;
+
+  return (
+    <div className="shared-weight-chart">
+      <div className="shared-weight-stats">
+        <div>
+          <div className="shared-weight-stat-label">Current</div>
+          <div className="shared-weight-stat-val">
+            {cur != null ? cur.toFixed(1) : '—'} <span>lbs</span>
+          </div>
+        </div>
+        {target != null && (
+          <div>
+            <div className="shared-weight-stat-label">Goal</div>
+            <div className="shared-weight-stat-val">
+              {target.toFixed(1)} <span>lbs</span>
+            </div>
+          </div>
+        )}
+        {lbsToGoal != null && (
+          <div>
+            <div className="shared-weight-stat-label">To go</div>
+            <div className={`shared-weight-stat-val ${lbsToGoal <= 0 ? 'positive' : 'neutral'}`}>
+              {lbsToGoal <= 0 ? 'Reached' : `${lbsToGoal.toFixed(1)} lbs`}
+            </div>
+          </div>
+        )}
+        {delta != null && (
+          <div>
+            <div className="shared-weight-stat-label">Last change</div>
+            <div className={`shared-weight-stat-val ${delta < 0 ? 'positive' : delta > 0 ? 'negative' : 'neutral'}`}>
+              {delta > 0 ? '+' : ''}{delta.toFixed(1)} <span>lbs</span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {isLoading ? (
+        <div style={{ textAlign: 'center', padding: '1rem', color: 'var(--color-text-secondary)', fontSize: '0.85rem' }}>Loading {username}'s history…</div>
+      ) : chartData.length < 2 ? (
+        <div style={{ textAlign: 'center', padding: '1rem', color: 'var(--color-text-secondary)', fontSize: '0.85rem' }}>
+          {chartData.length === 0 ? `${username} hasn't logged any weight yet.` : 'Need at least two entries to show a trend.'}
+        </div>
+      ) : (
+        <LineChart
+          data={chartData}
+          labelKey="label"
+          valueKey="weight_lbs"
+          lineColor="var(--color-primary)"
+          targetValue={target ?? undefined}
+        />
+      )}
     </div>
   );
 }

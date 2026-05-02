@@ -65,6 +65,115 @@ router.get('/today-totals', async (req, res) => {
   }
 });
 
+// Weight summary for everyone the requester can view, but only for owners
+// who explicitly opted in by enabling 'share-weight' in their user_settings.
+// Returns current weight (latest entry), target weight, lbs to goal, and
+// today's delta (today's latest minus yesterday's latest).
+router.get('/weight-summary', async (req, res) => {
+  try {
+    const result = await pool.query(
+      `WITH viewable AS (
+         SELECT s.owner_id AS user_id, u.username
+         FROM shares s
+         JOIN share_status ss ON ss.share_id = s.id
+         JOIN users u ON u.id = s.owner_id
+         WHERE s.viewer_id = $1 AND ss.status = 'accepted'
+       ),
+       opted_in AS (
+         SELECT v.user_id, v.username
+         FROM viewable v
+         LEFT JOIN user_settings us ON us.user_id = v.user_id
+         WHERE COALESCE((us.settings->>'share-weight')::boolean, false) = true
+       ),
+       latest AS (
+         SELECT DISTINCT ON (user_id) user_id, weight_lbs, logged_date
+         FROM weight_log
+         WHERE user_id IN (SELECT user_id FROM opted_in)
+         ORDER BY user_id, logged_date DESC, id DESC
+       ),
+       prev AS (
+         SELECT DISTINCT ON (wl.user_id) wl.user_id, wl.weight_lbs, wl.logged_date
+         FROM weight_log wl
+         JOIN latest l ON l.user_id = wl.user_id
+         WHERE wl.logged_date < l.logged_date
+         ORDER BY wl.user_id, wl.logged_date DESC, wl.id DESC
+       )
+       SELECT o.user_id, o.username,
+              l.weight_lbs::float AS current_weight,
+              l.logged_date AS current_date,
+              cg.target_weight_lbs::float AS target_weight,
+              p.weight_lbs::float AS prev_weight,
+              p.logged_date AS prev_date
+       FROM opted_in o
+       LEFT JOIN latest l ON l.user_id = o.user_id
+       LEFT JOIN prev p ON p.user_id = o.user_id
+       LEFT JOIN calorie_goals cg ON cg.user_id = o.user_id
+       ORDER BY o.username`,
+      [req.userId]
+    );
+    const summary = result.rows.map(r => {
+      const cur = r.current_weight;
+      const goal = r.target_weight;
+      const prev = r.prev_weight;
+      return {
+        user_id: r.user_id,
+        username: r.username,
+        current_weight: cur,
+        current_date: r.current_date,
+        target_weight: goal,
+        lbs_to_goal: cur != null && goal != null ? +(cur - goal).toFixed(1) : null,
+        delta_since_last: cur != null && prev != null ? +(cur - prev).toFixed(1) : null,
+        prev_date: r.prev_date,
+      };
+    });
+    res.json({ summary });
+  } catch (err) {
+    console.error('Sharing weight-summary error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Weight history of an owner — only returns rows when the owner opted in
+// to share-weight. Used by the Sharing expanded chart view.
+router.get('/:userId/weight-history', async (req, res) => {
+  try {
+    const ownerId = parseInt(req.params.userId);
+    if (!ownerId) return res.status(400).json({ error: 'Invalid userId' });
+    const days = Math.min(parseInt(req.query.days) || 90, 365);
+    const accept = await pool.query(
+      `SELECT s.id FROM shares s
+       JOIN share_status ss ON ss.share_id = s.id
+       WHERE s.owner_id = $1 AND s.viewer_id = $2 AND ss.status = 'accepted'`,
+      [ownerId, req.userId]
+    );
+    if (accept.rows.length === 0) return res.status(403).json({ error: 'No accepted share' });
+    const opt = await pool.query(
+      `SELECT COALESCE((settings->>'share-weight')::boolean, false) AS share_weight
+       FROM user_settings WHERE user_id = $1`,
+      [ownerId]
+    );
+    if (!opt.rows[0]?.share_weight) return res.status(403).json({ error: 'Owner has not enabled weight sharing' });
+    const target = await pool.query(
+      `SELECT target_weight_lbs::float AS target FROM calorie_goals WHERE user_id = $1`,
+      [ownerId]
+    );
+    const entries = await pool.query(
+      `SELECT id, weight_lbs::float AS weight_lbs, logged_date, notes
+       FROM weight_log
+       WHERE user_id = $1 AND logged_date >= CURRENT_DATE - $2::int
+       ORDER BY logged_date ASC, id ASC`,
+      [ownerId, days]
+    );
+    res.json({
+      entries: entries.rows,
+      target_weight: target.rows[0]?.target ?? null,
+    });
+  } catch (err) {
+    console.error('Sharing weight-history error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // Grant access to a user
 router.post('/', async (req, res) => {
   try {

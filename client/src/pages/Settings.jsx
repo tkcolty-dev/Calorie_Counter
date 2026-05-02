@@ -80,6 +80,7 @@ export default function Settings() {
   const [showPlanner, setShowPlanner] = useFlag('show-planner', true);
   const [compactUI, setCompactUI] = useFlag('compact-ui', false);
   const [largeText, setLargeText] = useFlag('large-text', false);
+  const [shareWeight, setShareWeight] = useFlag('share-weight', false);
 
   // Toggle the body classes that drive the actual styling so it applies live.
   useEffect(() => {
@@ -390,6 +391,25 @@ export default function Settings() {
               <div className="settings-item-sub">Last week's recap once a week.</div>
             </div>
             <button type="button" role="switch" aria-checked={showWeeklySummary} className={`settings-toggle${showWeeklySummary ? ' on' : ''}`} onClick={() => setShowWeeklySummary(!showWeeklySummary)}>
+              <span className="settings-toggle-knob" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Privacy / Sharing */}
+      <div className="settings-group">
+        <div className="settings-group-head">Privacy</div>
+        <div className="card settings-card">
+          <div className="settings-item">
+            <div className="settings-item-icon" style={{ color: '#14b8a6' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v18"/><path d="M3 12h18"/><path d="M16 7l-4-4-4 4"/><path d="M8 17l4 4 4-4"/></svg>
+            </div>
+            <div className="settings-item-text">
+              <div className="settings-item-label">Share my weight</div>
+              <div className="settings-item-sub">People you share with can see your current weight and how far you are from your goal.</div>
+            </div>
+            <button type="button" role="switch" aria-checked={shareWeight} className={`settings-toggle${shareWeight ? ' on' : ''}`} onClick={() => setShareWeight(!shareWeight)}>
               <span className="settings-toggle-knob" />
             </button>
           </div>

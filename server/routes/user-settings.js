@@ -16,6 +16,9 @@ const ALLOWED_KEYS = new Set([
   'show-weekly-summary',
   'show-quick-actions-bar',
   'show-planner',
+  'compact-ui',
+  'large-text',
+  'share-weight',
 ]);
 
 router.get('/', async (req, res) => {

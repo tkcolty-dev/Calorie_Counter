@@ -1664,6 +1664,92 @@ input[type="number"] {
   }
 }
 
+/* Sharing — view tabs (Day / Weight) inside the expanded row */
+.sharing-view-tabs {
+  display: inline-flex;
+  gap: 0.25rem;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  padding: 3px;
+  margin-bottom: 0.85rem;
+}
+
+.sharing-view-tab {
+  padding: 0.35rem 0.85rem;
+  border: none;
+  background: transparent;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  border-radius: 999px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s, color 0.15s;
+}
+
+.sharing-view-tab.active {
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Sharing — weight stats panel above the chart */
+.shared-weight-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.shared-weight-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
+  gap: 0.5rem;
+  padding: 0.6rem 0.7rem;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+}
+
+.shared-weight-stat-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-secondary);
+}
+
+.shared-weight-stat-val {
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin-top: 2px;
+}
+
+.shared-weight-stat-val span {
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.shared-weight-stat-val.positive { color: var(--color-success); }
+.shared-weight-stat-val.negative { color: var(--color-warning); }
+.shared-weight-stat-val.neutral { color: var(--color-text); }
+
+/* Sharing — inline weight pill */
+.sharing-weight-idle {
+  background: color-mix(in srgb, var(--color-text-secondary) 14%, var(--color-surface));
+  color: var(--color-text-secondary);
+}
+.sharing-weight-ok {
+  background: color-mix(in srgb, var(--color-success) 14%, var(--color-surface));
+  color: var(--color-success);
+}
+.sharing-weight-near {
+  background: color-mix(in srgb, var(--color-primary) 14%, var(--color-surface));
+  color: var(--color-primary);
+}
+
 /* Inline calorie pill on each Sharing member row */
 .sharing-cal-pill {
   display: inline-flex;
