@@ -145,6 +145,46 @@ export default function Settings() {
     setTimeout(() => setResetMsg(''), 2200);
   };
 
+  const [resetAllConfirm, setResetAllConfirm] = useState(false);
+  const [resetAllMsg, setResetAllMsg] = useState('');
+
+  const resetToDefaults = () => {
+    try {
+      // Drop every preference key we own — leaves the auth token alone.
+      const keysToWipe = [
+        'theme', 'fab-hint-enabled', 'fab-hint-seen', 'home-buttons',
+        'show-streak', 'show-suggestion-banner', 'show-weekly-summary',
+        'show-quick-actions-bar', 'show-planner',
+        'tutorial-shown', 'quick-actions-visible',
+        'weekly-summary-dismissed',
+      ];
+      // Also wipe per-section collapse keys and per-day auto-prompt keys
+      Object.keys(localStorage).forEach(k => {
+        if (
+          keysToWipe.includes(k) ||
+          k.startsWith('collapse-') ||
+          k.startsWith('auto-prompt-')
+        ) {
+          localStorage.removeItem(k);
+        }
+      });
+    } catch {}
+    // Re-sync state from the (now-empty) localStorage defaults
+    setTheme('light');
+    applyTheme('light');
+    setFabHint(false);
+    setHomeButtons(HOME_BUTTON_DEFAULTS);
+    setShowStreak(true);
+    setShowSuggestionBanner(true);
+    setShowWeeklySummary(true);
+    setShowQuickActionsBar(true);
+    setShowPlanner(true);
+    window.dispatchEvent(new CustomEvent('home-display-changed'));
+    setResetAllConfirm(false);
+    setResetAllMsg('All settings restored to defaults');
+    setTimeout(() => setResetAllMsg(''), 2500);
+  };
+
   return (
     <div>
       <BackHeader title="Settings" subtitle="Theme, notifications, account" />
@@ -354,6 +394,30 @@ export default function Settings() {
             </div>
             <span className="settings-link-chevron">{Chevron}</span>
           </a>
+
+          {!resetAllConfirm ? (
+            <button className="settings-link-row" onClick={() => setResetAllConfirm(true)}>
+              <div className="settings-item-icon" style={{ color: 'var(--color-warning)' }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9"/><polyline points="3 4 3 10 9 10"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/></svg>
+              </div>
+              <div className="settings-item-text">
+                <div className="settings-item-label">Reset all settings</div>
+                <div className="settings-item-sub">{resetAllMsg || 'Restore every preference to its default'}</div>
+              </div>
+              <span className="settings-link-chevron">{Chevron}</span>
+            </button>
+          ) : (
+            <div className="settings-confirm-block">
+              <div className="settings-item-text" style={{ marginBottom: '0.65rem' }}>
+                <div className="settings-item-label">Reset every setting to default?</div>
+                <div className="settings-item-sub">Theme, home-screen buttons, dashboard cards, hints — all back to factory. Your meals, goals, and account stay.</div>
+              </div>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button className="btn btn-primary" onClick={resetToDefaults} style={{ flex: 1 }}>Reset</button>
+                <button className="btn btn-secondary" onClick={() => setResetAllConfirm(false)}>Cancel</button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
