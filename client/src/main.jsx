@@ -22,6 +22,14 @@ const queryClient = new QueryClient({
   },
 });
 
+// Build-version probe — runs immediately on app boot. If the server is on a
+// newer build than the cached/baked-in client (common in Safari which holds
+// onto HTML aggressively), the response interceptor in api/client.js will
+// see the mismatch via X-App-Version and redirect to /api/refresh.
+import('./api/client').then(({ default: api }) => {
+  api.get('/version').catch(() => {});
+}).catch(() => {});
+
 // Register service worker for push notifications + auto-reload when a new
 // version of the SW activates (so app updates roll out without users having
 // to manually clear cache).

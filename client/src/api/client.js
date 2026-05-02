@@ -24,15 +24,37 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// Build-version mismatch detector. If the server reports a different build
+// than the one baked into this JS bundle, the client is stale (cached HTML
+// and JS got served somehow) — force a full cache wipe and reload exactly
+// once. This is the killer for Safari's stubborn HTML caching: API responses
+// are never SW-intercepted, so the X-App-Version header reaches us fresh
+// even when index.html does not.
+function maybeForceRefresh(serverVersion) {
+  if (!serverVersion) return;
+  const myVersion = typeof __BUILD_ID__ !== 'undefined' ? __BUILD_ID__ : null;
+  if (!myVersion || serverVersion === myVersion) return;
+  try {
+    if (sessionStorage.getItem('bw-refresh-attempted') === '1') return;
+    sessionStorage.setItem('bw-refresh-attempted', '1');
+  } catch {}
+  // Tiny delay so any in-flight requests settle before we navigate
+  setTimeout(() => {
+    window.location.replace('/api/refresh');
+  }, 50);
+}
+
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    maybeForceRefresh(response.headers?.['x-app-version']);
+    return response;
+  },
   (error) => {
+    maybeForceRefresh(error.response?.headers?.['x-app-version']);
     if (error.response?.status === 401) {
       const url = error.config?.url || '';
       const isAuthAttempt = url.includes('/auth/login') || url.includes('/auth/register');
       const onLoginPage = window.location.pathname === '/login' || window.location.pathname === '/register';
-      // Don't redirect on the login/register call itself, or if already on the login page —
-      // that would wipe the error message before the user could see it.
       if (!isAuthAttempt && !onLoginPage) {
         localStorage.removeItem('token');
         window.location.href = '/login';
