@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/client';
+import Logo from '../components/Logo';
 
 export default function Register() {
   const [username, setUsername] = useState('');
@@ -65,10 +66,7 @@ export default function Register() {
       <div className="auth-shell">
         <div className="auth-brand">
           <div className="auth-logo" aria-hidden="true">
-            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M3 11h18l-2 9H5l-2-9z"/>
-              <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-            </svg>
+            <Logo size={40} />
           </div>
           <h1 className="auth-title">Bitewise</h1>
           <p className="auth-sub">Create your account in under a minute.</p>
