@@ -551,24 +551,35 @@ export default function Sharing() {
                   {/* Expanded view */}
                   {isExpanded && canExpand && (
                     <div className="sharing-member-expanded" style={{ borderTop: '1px solid var(--color-border)', padding: '0.85rem' }}>
-                      {/* View tab toggle (only show Weight when the owner opted in) */}
-                      {weightByUser.has(m.otherUserId) && (
-                        <div className="sharing-view-tabs">
-                          <button
-                            type="button"
-                            className={`sharing-view-tab${expandedTab === 'day' ? ' active' : ''}`}
-                            onClick={() => setExpandedTab('day')}
-                          >Day</button>
-                          <button
-                            type="button"
-                            className={`sharing-view-tab${expandedTab === 'weight' ? ' active' : ''}`}
-                            onClick={() => setExpandedTab('weight')}
-                          >Weight</button>
-                        </div>
-                      )}
+                      {/* View tab toggle — always visible so the Weight tab can
+                          surface either the chart or a 'not shared' message. */}
+                      <div className="sharing-view-tabs">
+                        <button
+                          type="button"
+                          className={`sharing-view-tab${expandedTab === 'day' ? ' active' : ''}`}
+                          onClick={() => setExpandedTab('day')}
+                        >Day</button>
+                        <button
+                          type="button"
+                          className={`sharing-view-tab${expandedTab === 'weight' ? ' active' : ''}`}
+                          onClick={() => setExpandedTab('weight')}
+                        >Weight</button>
+                      </div>
 
-                      {expandedTab === 'weight' && weightByUser.has(m.otherUserId) ? (
-                        <SharedWeightChart userId={m.otherUserId} username={m.username} summary={weightByUser.get(m.otherUserId)} />
+                      {expandedTab === 'weight' ? (
+                        weightByUser.has(m.otherUserId) ? (
+                          <SharedWeightChart userId={m.otherUserId} username={m.username} summary={weightByUser.get(m.otherUserId)} />
+                        ) : (
+                          <div className="shared-weight-empty">
+                            <div className="shared-weight-empty-icon">
+                              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M12 3v18"/><path d="M3 12h18"/><path d="M16 7l-4-4-4 4"/><path d="M8 17l4 4 4-4"/>
+                              </svg>
+                            </div>
+                            <div className="shared-weight-empty-title">{m.username} hasn't shared their weight</div>
+                            <div className="shared-weight-empty-sub">They can turn it on under Settings → Privacy → Share my weight.</div>
+                          </div>
+                        )
                       ) : (<>
 
                       {/* Planned meals toggle (sharing direction back) */}
