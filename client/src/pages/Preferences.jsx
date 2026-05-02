@@ -149,8 +149,8 @@ export default function Preferences() {
       <form onSubmit={handleSubmit} className="card" style={{ marginBottom: '1.5rem' }}>
         {error && <div className="error-message">{error}</div>}
 
-        <div className="pref-add-form" style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-end' }}>
-          <div className="form-group" style={{ marginBottom: 0, minWidth: 140 }}>
+        <div className="pref-add-form">
+          <div className="form-group pref-type">
             <label htmlFor="prefType">Type</label>
             <select id="prefType" value={type} onChange={(e) => setType(e.target.value)}>
               <option value="cuisine">Cuisine</option>
@@ -161,7 +161,7 @@ export default function Preferences() {
             </select>
           </div>
 
-          <div className="form-group" style={{ marginBottom: 0, flex: 1 }}>
+          <div className="form-group pref-value">
             <label htmlFor="prefValue">Value</label>
             <input
               id="prefValue"
@@ -175,9 +175,8 @@ export default function Preferences() {
 
           <button
             type="submit"
-            className="btn btn-primary"
+            className="btn btn-primary pref-add-submit"
             disabled={addPref.isPending}
-            style={{ padding: '0.5rem 1.25rem', whiteSpace: 'nowrap' }}
           >
             Add
           </button>

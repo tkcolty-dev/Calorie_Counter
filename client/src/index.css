@@ -1979,6 +1979,15 @@ input[type="number"] {
 
   .pref-add-form {
     flex-direction: column;
+    align-items: stretch;
+  }
+  .pref-add-form .form-group {
+    margin-bottom: 0.6rem;
+  }
+  .pref-add-form .pref-add-submit {
+    width: 100%;
+    padding: 0.85rem;
+    font-size: 0.95rem;
   }
 
   .top-food-item {
@@ -3554,6 +3563,21 @@ input[type="number"] {
     display: flex;
     bottom: 28px;
     right: 28px;
+  }
+}
+
+/* ==================== Preferences add form (desktop default) ==================== */
+@media (min-width: 769px) {
+  .pref-add-form {
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-end;
+  }
+  .pref-add-form .pref-type { min-width: 140px; margin-bottom: 0; }
+  .pref-add-form .pref-value { flex: 1; margin-bottom: 0; }
+  .pref-add-form .pref-add-submit {
+    padding: 0.55rem 1.25rem;
+    white-space: nowrap;
   }
 }
 

@@ -106,22 +106,22 @@ export default function WeightLog() {
       )}
 
       <form onSubmit={handleSubmit} className="card" style={{ marginBottom: '1rem' }}>
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-          <div className="form-group" style={{ flex: 1, minWidth: 100, marginBottom: 0 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem' }}>
+          <div className="form-group" style={{ marginBottom: 0 }}>
             <label htmlFor="weightLbs">Weight (lbs)</label>
-            <input id="weightLbs" type="number" value={weight} onChange={(e) => setWeight(e.target.value)} placeholder="e.g. 175" min="50" step="0.1" required />
+            <input id="weightLbs" type="number" value={weight} onChange={(e) => setWeight(e.target.value)} placeholder="e.g. 175" min="50" step="0.1" inputMode="decimal" required />
           </div>
-          <div className="form-group" style={{ flex: 1, minWidth: 120, marginBottom: 0 }}>
+          <div className="form-group" style={{ marginBottom: 0 }}>
             <label htmlFor="weightDate">Date</label>
             <input id="weightDate" type="date" value={logDate} onChange={(e) => setLogDate(e.target.value)} max={today} required />
           </div>
-          <button type="submit" className="btn btn-primary" style={{ padding: '0.5rem 1rem', marginBottom: '0.25rem' }} disabled={logWeight.isPending}>
-            {logWeight.isPending ? 'Saving...' : 'Log'}
-          </button>
         </div>
-        <div className="form-group" style={{ marginTop: '0.5rem', marginBottom: 0 }}>
-          <input type="text" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notes (optional)" style={{ fontSize: '0.85rem' }} />
+        <div className="form-group" style={{ marginTop: '0.6rem', marginBottom: '0.6rem' }}>
+          <input type="text" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notes (optional)" />
         </div>
+        <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '0.85rem', fontSize: '0.95rem', fontWeight: 600 }} disabled={logWeight.isPending}>
+          {logWeight.isPending ? 'Saving…' : 'Log weight'}
+        </button>
       </form>
 
       {chartData.length > 1 && (
