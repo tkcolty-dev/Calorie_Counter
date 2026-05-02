@@ -9,9 +9,11 @@ localStorage.removeItem('msg-last-check');
 localStorage.removeItem('seen-share-ids');
 localStorage.removeItem('chat-history');
 
-// Apply saved theme before render to prevent flash
+// Apply saved theme + density flags before render to prevent flash
 const savedTheme = localStorage.getItem('theme') || 'light';
 document.documentElement.setAttribute('data-theme', savedTheme);
+if (localStorage.getItem('compact-ui') === '1') document.documentElement.classList.add('ui-compact');
+if (localStorage.getItem('large-text') === '1') document.documentElement.classList.add('ui-large-text');
 
 const queryClient = new QueryClient({
   defaultOptions: {

@@ -50,6 +50,33 @@ html {
   scroll-behavior: smooth;
 }
 
+/* ==================== Density: Compact ==================== */
+.ui-compact .card { padding: 0.85rem; }
+.ui-compact .collapsible-header { padding: 0.55rem 0.7rem; }
+.ui-compact .meal-table-item { padding: 0.5rem 0.7rem; }
+.ui-compact .qa-bar-btn { padding: 0.45rem 0.35rem 0.4rem; min-height: 56px; }
+.ui-compact .qa-bar-icon { width: 30px; height: 30px; }
+.ui-compact .form-group { margin-bottom: 0.5rem; }
+.ui-compact .meal-items-list { padding: 0.45rem 0.55rem; }
+.ui-compact .settings-item,
+.ui-compact .settings-link-row { padding: 0.6rem 0.7rem; }
+.ui-compact .dash-greeting { margin-bottom: 0.55rem; }
+.ui-compact .page-header { margin-bottom: 0.65rem; }
+.ui-compact .qls-progress { padding: 0.45rem 0.7rem; margin-bottom: 0.55rem; }
+
+/* ==================== Density: Large Text ==================== */
+/* Scales the root font-size — every rem-based value picks it up. */
+.ui-large-text { font-size: 18px; }
+@media (max-width: 768px) {
+  .ui-large-text { font-size: 18px; }
+}
+.ui-large-text .meal-table-row-name { font-size: 1rem; }
+.ui-large-text .meal-table-row-cal { font-size: 1.15rem; }
+.ui-large-text .qa-bar-label { font-size: 0.82rem; }
+.ui-large-text .qls-chip-name { font-size: 0.95rem; }
+.ui-large-text .settings-item-label { font-size: 1rem; }
+.ui-large-text .settings-item-sub { font-size: 0.85rem; }
+
 /* Page transition — fade only. We deliberately avoid transform on the
    wrapper because any transform on an ancestor turns position:fixed
    children into ancestor-positioned elements, which broke the sticky

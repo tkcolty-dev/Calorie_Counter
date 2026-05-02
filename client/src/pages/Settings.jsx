@@ -78,6 +78,16 @@ export default function Settings() {
   const [showWeeklySummary, setShowWeeklySummary] = useFlag('show-weekly-summary', true);
   const [showQuickActionsBar, setShowQuickActionsBar] = useFlag('show-quick-actions-bar', true);
   const [showPlanner, setShowPlanner] = useFlag('show-planner', true);
+  const [compactUI, setCompactUI] = useFlag('compact-ui', false);
+  const [largeText, setLargeText] = useFlag('large-text', false);
+
+  // Toggle the body classes that drive the actual styling so it applies live.
+  useEffect(() => {
+    document.documentElement.classList.toggle('ui-compact', compactUI);
+  }, [compactUI]);
+  useEffect(() => {
+    document.documentElement.classList.toggle('ui-large-text', largeText);
+  }, [largeText]);
 
   const initialThemeApplied = useRef(false);
   useEffect(() => {
@@ -100,6 +110,17 @@ export default function Settings() {
     } catch {}
   };
 
+  // Most browsers accept a base64url string for applicationServerKey, but
+  // some (older Safari, Firefox) require a Uint8Array. Convert defensively.
+  const urlBase64ToUint8Array = (b64) => {
+    const padding = '='.repeat((4 - (b64.length % 4)) % 4);
+    const norm = (b64 + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const bin = atob(norm);
+    const out = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+    return out;
+  };
+
   const enablePush = async () => {
     setPushBusy(true);
     setPushError('');
@@ -112,16 +133,26 @@ export default function Settings() {
       }
       const reg = await navigator.serviceWorker.register('/sw.js');
       const { data } = await api.get('/notifications/vapid-key');
-      const vapidPublicKey = data?.vapidPublicKey || data?.publicKey || data;
+      // Server returns the key in the `key` field; tolerate older shapes too.
+      const vapidPublicKey = data?.key || data?.vapidPublicKey || data?.publicKey || (typeof data === 'string' ? data : null);
       if (!vapidPublicKey) {
         setPushError('Server has no VAPID key configured.');
         return;
       }
       const sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: vapidPublicKey,
+        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
       });
-      await api.post('/notifications/subscribe', sub.toJSON());
+      // Send timezone offset alongside so the server knows when 8am / 12pm /
+      // 6pm is for this user. Browser returns -minutes; flip sign so + means
+      // ahead of UTC, which matches what the user_timezones table expects.
+      const tz_offset = -new Date().getTimezoneOffset();
+      const subJson = sub.toJSON();
+      await api.post('/notifications/subscribe', {
+        endpoint: subJson.endpoint,
+        keys: subJson.keys,
+        tz_offset,
+      });
     } catch (err) {
       setPushError(err?.response?.data?.error || err?.message || 'Could not enable push.');
     } finally {
@@ -210,6 +241,32 @@ export default function Settings() {
                 >{t.label}</button>
               ))}
             </div>
+          </div>
+
+          <div className="settings-item">
+            <div className="settings-item-icon" style={{ color: '#0ea5e9' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+            </div>
+            <div className="settings-item-text">
+              <div className="settings-item-label">Compact UI</div>
+              <div className="settings-item-sub">Tighter spacing — more content per screen.</div>
+            </div>
+            <button type="button" role="switch" aria-checked={compactUI} className={`settings-toggle${compactUI ? ' on' : ''}`} onClick={() => setCompactUI(!compactUI)}>
+              <span className="settings-toggle-knob" />
+            </button>
+          </div>
+
+          <div className="settings-item">
+            <div className="settings-item-icon" style={{ color: '#a855f7' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
+            </div>
+            <div className="settings-item-text">
+              <div className="settings-item-label">Large text</div>
+              <div className="settings-item-sub">Bumps every label and number up by one size step.</div>
+            </div>
+            <button type="button" role="switch" aria-checked={largeText} className={`settings-toggle${largeText ? ' on' : ''}`} onClick={() => setLargeText(!largeText)}>
+              <span className="settings-toggle-knob" />
+            </button>
           </div>
         </div>
       </div>
