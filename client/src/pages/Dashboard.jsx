@@ -368,6 +368,7 @@ export default function Dashboard() {
       <CollapsibleSection
         title="Meals"
         subtitle={meals.length > 0 ? `${totalCalories} cal` : ''}
+        defaultOpen
         actions={
           <div style={{ display: 'flex', gap: '0.4rem' }}>
             <button className="btn btn-secondary" style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem' }} onClick={() => setShowPlanForm(true)}>+ Plan</button>
