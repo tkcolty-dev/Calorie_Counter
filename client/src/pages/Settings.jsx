@@ -116,6 +116,10 @@ export default function Settings() {
           <span>Food preferences</span>
           <span className="settings-action-sub">Cuisines, allergies, favorites</span>
         </button>
+        <a className="settings-action" href="/api/refresh">
+          <span>Force update</span>
+          <span className="settings-action-sub">Clear local cache and load the latest app</span>
+        </a>
       </div>
 
       <div className="card settings-section">

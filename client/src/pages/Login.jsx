@@ -107,6 +107,9 @@ export default function Login() {
         <p className="auth-foot">
           Don't have an account? <Link to="/register">Create one</Link>
         </p>
+        <p className="auth-foot" style={{ marginTop: '0.4rem', fontSize: '0.78rem', opacity: 0.7 }}>
+          Trouble signing in or seeing an old version? <a href="/api/refresh">Force refresh</a>
+        </p>
       </div>
     </div>
   );

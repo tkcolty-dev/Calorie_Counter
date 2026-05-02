@@ -1734,6 +1734,64 @@ input[type="number"] {
   margin-bottom: 1rem;
 }
 
+/* Horizontal icon-bar version of Quick Actions — single scrollable row of
+   tile-buttons, each with an icon badge and a label underneath. Sits above
+   the dashboard cards to give a fast, distraction-free way to navigate. */
+.quick-actions-bar {
+  display: flex;
+  gap: 0.45rem;
+  margin-bottom: 1rem;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0.15rem 0.1rem 0.4rem;
+  /* Hide the scrollbar — chrome on desktop / safari mobile */
+  scrollbar-width: none;
+}
+.quick-actions-bar::-webkit-scrollbar { display: none; }
+
+.qa-bar-btn {
+  flex-shrink: 0;
+  min-width: 64px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.55rem 0.4rem 0.5rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  text-decoration: none;
+  color: var(--color-text);
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.12s, border-color 0.18s, box-shadow 0.18s;
+}
+
+.qa-bar-btn:active {
+  transform: scale(0.96);
+}
+
+.qa-bar-btn:hover {
+  border-color: color-mix(in srgb, var(--tile-tint, var(--color-primary)) 50%, var(--color-border));
+}
+
+.qa-bar-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--tile-tint, var(--color-primary)) 14%, var(--color-surface));
+  color: var(--tile-tint, var(--color-primary));
+}
+
+.qa-bar-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  color: var(--color-text);
+}
+
 .quick-action-tile {
   display: grid;
   grid-template-columns: auto 1fr;

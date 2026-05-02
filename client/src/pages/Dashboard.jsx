@@ -235,30 +235,7 @@ export default function Dashboard() {
         <CalorieBudgetBar consumed={totalCalories} goal={dailyGoal} macros={macroTotals} macroGoals={macroGoals} />
       </div>
 
-      {/* Frequent foods - one tap log */}
-      {topFoods.length > 0 && (
-        <div style={{ marginBottom: '0.85rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
-            <span style={{ fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--color-text-secondary)' }}>
-              Tap to log instantly
-            </span>
-            <Link to="/log" style={{ fontSize: '0.85rem', fontWeight: 600, padding: '0.25rem 0.5rem', borderRadius: 8 }}>More options →</Link>
-          </div>
-          <div className="qls-chip-row">
-            {topFoods.slice(0, 6).map(f => (
-              <button
-                key={f.name}
-                className="qls-chip qls-chip-recent"
-                onClick={() => quickLogTopFood.mutate(f)}
-                disabled={quickLogTopFood.isPending}
-              >
-                <span className="qls-chip-name">{f.name}</span>
-                <span className="qls-chip-cal">{f.avg_calories}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* Frequent-foods chips removed — the Log page and FAB sheet handle this */}
 
       {/* Pending tasks */}
       <DashboardTasks />
@@ -276,26 +253,42 @@ export default function Dashboard() {
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={showQuickActions ? 'rotated' : ''}><polyline points="6 9 12 15 18 9"/></svg>
       </button>
       {showQuickActions && (
-        <div className="quick-actions-grid">
-          <Link to="/reports" className="quick-action-tile" style={{ '--tile-tint': '#3b82f6' }}>
-            <span className="qa-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg></span>
-            <span className="qa-label">Reports</span>
-            <span className="qa-sub">Trends &amp; streaks</span>
+        <div className="quick-actions-bar">
+          <Link to="/reports" className="qa-bar-btn" style={{ '--tile-tint': '#3b82f6' }} title="Reports">
+            <span className="qa-bar-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
+            </span>
+            <span className="qa-bar-label">Reports</span>
           </Link>
-          <Link to="/weight" className="quick-action-tile" style={{ '--tile-tint': '#14b8a6' }}>
-            <span className="qa-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v18"/><path d="M3 12h18"/><path d="M16 7l-4-4-4 4"/><path d="M8 17l4 4 4-4"/></svg></span>
-            <span className="qa-label">Weight</span>
-            <span className="qa-sub">Track progress</span>
+          <Link to="/weight" className="qa-bar-btn" style={{ '--tile-tint': '#14b8a6' }} title="Weight">
+            <span className="qa-bar-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v18"/><path d="M3 12h18"/><path d="M16 7l-4-4-4 4"/><path d="M8 17l4 4 4-4"/></svg>
+            </span>
+            <span className="qa-bar-label">Weight</span>
           </Link>
-          <Link to="/goals" className="quick-action-tile" style={{ '--tile-tint': '#8b5cf6' }}>
-            <span className="qa-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></span>
-            <span className="qa-label">Goals</span>
-            <span className="qa-sub">Calories &amp; macros</span>
+          <Link to="/goals" className="qa-bar-btn" style={{ '--tile-tint': '#8b5cf6' }} title="Goals">
+            <span className="qa-bar-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+            </span>
+            <span className="qa-bar-label">Goals</span>
           </Link>
-          <Link to="/challenges" className="quick-action-tile" style={{ '--tile-tint': '#f97316' }}>
-            <span className="qa-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg></span>
-            <span className="qa-label">Challenges</span>
-            <span className="qa-sub">Compete with friends</span>
+          <Link to="/challenges" className="qa-bar-btn" style={{ '--tile-tint': '#f97316' }} title="Challenges">
+            <span className="qa-bar-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
+            </span>
+            <span className="qa-bar-label">Challenges</span>
+          </Link>
+          <Link to="/tasks" className="qa-bar-btn" style={{ '--tile-tint': '#16a34a' }} title="Tasks">
+            <span className="qa-bar-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+            </span>
+            <span className="qa-bar-label">Tasks</span>
+          </Link>
+          <Link to="/sharing" className="qa-bar-btn" style={{ '--tile-tint': '#ec4899' }} title="Sharing">
+            <span className="qa-bar-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            </span>
+            <span className="qa-bar-label">Sharing</span>
           </Link>
         </div>
       )}

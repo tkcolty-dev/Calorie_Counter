@@ -63,6 +63,60 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
+// Cache-buster: a tiny no-cache HTML page that unregisters every service
+// worker, deletes every cache, then redirects to /. Lives under /api/* so
+// it cannot be intercepted by an existing (stale) service worker. Anyone
+// stuck on an old build can visit this URL on any device to fully reset.
+app.get('/api/refresh', (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Updating Bitewise…</title>
+<style>
+  body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
+       font-family:-apple-system,system-ui,'Segoe UI',Roboto,sans-serif;
+       background:#f6f7fb;color:#0f172a}
+  .box{text-align:center;padding:1.5rem;max-width:340px}
+  h1{font-size:1.3rem;font-weight:700;margin:0 0 0.6rem}
+  p{color:#64748b;font-size:0.9rem;line-height:1.4;margin:0 0 1rem}
+  .spinner{width:38px;height:38px;border-radius:50%;border:3px solid #e6e8ee;
+           border-top-color:#2563eb;animation:s 0.8s linear infinite;margin:0 auto 1rem}
+  @keyframes s{to{transform:rotate(360deg)}}
+  a{color:#2563eb;text-decoration:none;font-weight:600}
+</style>
+</head>
+<body>
+<div class="box">
+  <div class="spinner" aria-hidden="true"></div>
+  <h1>Updating Bitewise…</h1>
+  <p>Clearing local cache and loading the latest version.</p>
+  <p><a id="manual" href="/?_=${Date.now()}">Tap here if it doesn't redirect</a></p>
+</div>
+<script>
+(async () => {
+  try {
+    if ('serviceWorker' in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map(r => r.unregister()));
+    }
+    if ('caches' in window) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map(k => caches.delete(k)));
+    }
+  } catch (e) {}
+  // Reload to / with a cache-buster so even HTTP caches can't serve stale.
+  location.replace('/?_=' + Date.now());
+})();
+</script>
+</body>
+</html>`);
+});
+
 // Serve static files in production
 if (process.env.NODE_ENV === 'production') {
   const distDir = path.join(__dirname, '..', 'client', 'dist');
