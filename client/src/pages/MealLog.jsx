@@ -281,7 +281,8 @@ export default function MealLog() {
     return {
       id: newItemId(),
       name: name.trim(),
-      calories: parseInt(calories),
+      // Math.round so a quantity calc like 89.5 lands on 90, not parseInt's 89
+      calories: Math.round(parseFloat(calories)),
       protein_g: protein ? parseFloat(protein) : null,
       carbs_g: carbs ? parseFloat(carbs) : null,
       fat_g: fat ? parseFloat(fat) : null,

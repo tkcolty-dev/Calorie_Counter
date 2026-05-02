@@ -95,11 +95,13 @@ router.post('/', async (req, res) => {
       targetUserId = for_user_id;
     }
 
+    // Math.round so '89.5' from a calc rounds to 90, not parseInt's 89.
+    const calInt = Math.round(parseFloat(calories));
     const result = await pool.query(
       `INSERT INTO meals (user_id, meal_type, name, calories, notes, logged_at, protein_g, carbs_g, fat_g)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        RETURNING *`,
-      [targetUserId, meal_type, name, parseInt(calories), notes || null, logged_at || new Date(), protein_g || null, carbs_g || null, fat_g || null]
+      [targetUserId, meal_type, name, calInt, notes || null, logged_at || new Date(), protein_g || null, carbs_g || null, fat_g || null]
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
@@ -117,7 +119,7 @@ router.put('/:id', async (req, res) => {
        calories = COALESCE($3, calories), notes = COALESCE($4, notes),
        protein_g = COALESCE($7, protein_g), carbs_g = COALESCE($8, carbs_g), fat_g = COALESCE($9, fat_g)
        WHERE id = $5 AND user_id = $6 RETURNING *`,
-      [meal_type, name, calories != null ? parseInt(calories) : null, notes, req.params.id, req.userId, protein_g ?? null, carbs_g ?? null, fat_g ?? null]
+      [meal_type, name, calories != null ? Math.round(parseFloat(calories)) : null, notes, req.params.id, req.userId, protein_g ?? null, carbs_g ?? null, fat_g ?? null]
     );
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Meal not found' });
