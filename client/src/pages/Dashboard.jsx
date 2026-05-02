@@ -12,11 +12,10 @@ import { useAuth } from '../context/AuthContext';
 
 function greeting() {
   const h = new Date().getHours();
-  if (h < 5) return 'Hey night owl';
+  if (h < 5) return 'Welcome back';
   if (h < 12) return 'Good morning';
   if (h < 17) return 'Good afternoon';
-  if (h < 21) return 'Good evening';
-  return 'Hey night owl';
+  return 'Good evening';
 }
 
 function CollapsibleSection({ title, subtitle, defaultOpen = true, children, actions }) {
