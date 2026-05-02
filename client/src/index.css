@@ -487,8 +487,9 @@ input[type="number"] {
 .chat-container {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 56px - 3rem);
-  max-height: calc(100vh - 56px - 3rem);
+  height: calc(100dvh - 56px - 3rem);
+  max-height: calc(100dvh - 56px - 3rem);
+  min-height: 0;
 }
 
 .chat-messages {
@@ -1734,29 +1735,23 @@ input[type="number"] {
   margin-bottom: 1rem;
 }
 
-/* Horizontal icon-bar version of Quick Actions — single scrollable row of
-   tile-buttons, each with an icon badge and a label underneath. Sits above
-   the dashboard cards to give a fast, distraction-free way to navigate. */
+/* Horizontal icon-bar version of Quick Actions — equal-width row of 4
+   tile-buttons (no scroll), each with an icon badge and a label underneath.
+   All icons share the primary brand color. */
 .quick-actions-bar {
-  display: flex;
-  gap: 0.45rem;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
   margin-bottom: 1rem;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  padding: 0.15rem 0.1rem 0.4rem;
-  /* Hide the scrollbar — chrome on desktop / safari mobile */
-  scrollbar-width: none;
+  padding: 0.15rem 0 0.2rem;
 }
-.quick-actions-bar::-webkit-scrollbar { display: none; }
 
 .qa-bar-btn {
-  flex-shrink: 0;
-  min-width: 64px;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 0.3rem;
-  padding: 0.55rem 0.4rem 0.5rem;
+  padding: 0.6rem 0.4rem 0.55rem;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: 12px;
@@ -1764,6 +1759,7 @@ input[type="number"] {
   color: var(--color-text);
   -webkit-tap-highlight-color: transparent;
   transition: transform 0.12s, border-color 0.18s, box-shadow 0.18s;
+  min-width: 0;
 }
 
 .qa-bar-btn:active {
@@ -1771,7 +1767,7 @@ input[type="number"] {
 }
 
 .qa-bar-btn:hover {
-  border-color: color-mix(in srgb, var(--tile-tint, var(--color-primary)) 50%, var(--color-border));
+  border-color: color-mix(in srgb, var(--color-primary) 40%, var(--color-border));
 }
 
 .qa-bar-icon {
@@ -1781,8 +1777,8 @@ input[type="number"] {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: color-mix(in srgb, var(--tile-tint, var(--color-primary)) 14%, var(--color-surface));
-  color: var(--tile-tint, var(--color-primary));
+  background: color-mix(in srgb, var(--color-primary) 14%, var(--color-surface));
+  color: var(--color-primary);
 }
 
 .qa-bar-label {
@@ -2012,6 +2008,14 @@ input[type="number"] {
     padding-bottom: calc(var(--tab-height) + var(--safe-bottom) + 5.5rem);
   }
 
+  /* Pages that own the entire viewport (chat, messages) don't need the FAB
+     clearance and shouldn't introduce a scrollable gap below the fold. */
+  body:has(.chat-container) .app-main,
+  body:has(.messages-thread) .app-main {
+    padding-top: 0.5rem;
+    padding-bottom: calc(var(--tab-height) + var(--safe-bottom));
+  }
+
   .container {
     padding-left: 0.75rem;
     padding-right: 0.75rem;
@@ -2022,12 +2026,12 @@ input[type="number"] {
   }
 
   .chat-container {
-    height: calc(100vh - var(--tab-height) - var(--safe-bottom) - 2rem);
-    max-height: calc(100vh - var(--tab-height) - var(--safe-bottom) - 2rem);
+    height: calc(100dvh - var(--tab-height) - var(--safe-bottom) - 2rem);
+    max-height: calc(100dvh - var(--tab-height) - var(--safe-bottom) - 2rem);
   }
 
   .messages-thread {
-    height: calc(100vh - var(--tab-height) - var(--safe-bottom) - 2rem);
+    height: calc(100dvh - var(--tab-height) - var(--safe-bottom) - 2rem);
   }
 
   .meal-table-item {

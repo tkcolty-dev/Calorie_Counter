@@ -254,35 +254,29 @@ export default function Dashboard() {
       </button>
       {showQuickActions && (
         <div className="quick-actions-bar">
-          <Link to="/reports" className="qa-bar-btn" style={{ '--tile-tint': '#3b82f6' }} title="Reports">
+          <Link to="/reports" className="qa-bar-btn" title="Reports">
             <span className="qa-bar-icon">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
             </span>
             <span className="qa-bar-label">Reports</span>
           </Link>
-          <Link to="/weight" className="qa-bar-btn" style={{ '--tile-tint': '#14b8a6' }} title="Weight">
+          <Link to="/weight" className="qa-bar-btn" title="Weight">
             <span className="qa-bar-icon">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v18"/><path d="M3 12h18"/><path d="M16 7l-4-4-4 4"/><path d="M8 17l4 4 4-4"/></svg>
             </span>
             <span className="qa-bar-label">Weight</span>
           </Link>
-          <Link to="/goals" className="qa-bar-btn" style={{ '--tile-tint': '#8b5cf6' }} title="Goals">
+          <Link to="/goals" className="qa-bar-btn" title="Goals">
             <span className="qa-bar-icon">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
             </span>
             <span className="qa-bar-label">Goals</span>
           </Link>
-          <Link to="/challenges" className="qa-bar-btn" style={{ '--tile-tint': '#f97316' }} title="Challenges">
+          <Link to="/challenges" className="qa-bar-btn" title="Challenges">
             <span className="qa-bar-icon">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
             </span>
             <span className="qa-bar-label">Challenges</span>
-          </Link>
-          <Link to="/sharing" className="qa-bar-btn" style={{ '--tile-tint': '#ec4899' }} title="Sharing">
-            <span className="qa-bar-icon">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-            </span>
-            <span className="qa-bar-label">Sharing</span>
           </Link>
         </div>
       )}
