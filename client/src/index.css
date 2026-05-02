@@ -3819,80 +3819,109 @@ input[type="number"] {
   transform: translateX(20px);
 }
 
-/* ==================== Settings page ==================== */
-.settings-section {
-  padding: 0.75rem !important;
-  margin-bottom: 0.75rem;
+/* ==================== Settings page (redesigned) ==================== */
+.settings-group {
+  margin-bottom: 1rem;
 }
 
-.settings-row-head {
-  font-size: 0.7rem;
+.settings-group-head {
+  font-size: 0.72rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--color-text-secondary);
-  padding: 0.2rem 0.4rem 0.5rem;
+  padding: 0 0.6rem 0.5rem;
 }
 
-.settings-row {
+.settings-card {
+  padding: 0 !important;
+  overflow: hidden;
+}
+
+.settings-item {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  padding: 0.5rem 0.4rem;
+  gap: 0.7rem;
+  padding: 0.85rem 0.85rem;
+  border-top: 1px solid var(--color-border);
 }
 
-.settings-row-label-block { flex: 1; min-width: 0; }
-.settings-row-label {
-  font-size: 0.95rem;
-  font-weight: 600;
+.settings-item:first-child { border-top: none; }
+
+.settings-item-icon {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, currentColor 12%, var(--color-surface));
 }
-.settings-row-sub {
+
+.settings-item-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.settings-item-label {
+  font-size: 0.92rem;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  line-height: 1.2;
+}
+
+.settings-item-sub {
   font-size: 0.78rem;
   color: var(--color-text-secondary);
-  margin-top: 2px;
+  line-height: 1.35;
+  margin-top: 3px;
 }
 
-.settings-action {
+.settings-item-error {
+  font-size: 0.78rem;
+  color: var(--color-danger);
+  margin-top: 4px;
+  line-height: 1.35;
+}
+
+/* Tappable navigation row — chevron on the right makes the affordance clear */
+.settings-link-row {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.15rem;
+  align-items: center;
+  gap: 0.7rem;
   width: 100%;
-  padding: 0.7rem 0.4rem;
-  background: none;
+  padding: 0.85rem 0.85rem;
   border: none;
   border-top: 1px solid var(--color-border);
-  text-align: left;
+  background: var(--color-surface);
   font: inherit;
   color: var(--color-text);
+  text-align: left;
+  text-decoration: none;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  transition: background 0.12s;
+  transition: background 0.15s;
 }
 
-.settings-action:first-of-type { border-top: none; }
-.settings-action:active { background: var(--color-bg); }
-
-.settings-action > span:first-child {
-  font-size: 0.95rem;
-  font-weight: 600;
+.settings-link-row:first-child { border-top: none; }
+.settings-link-row:hover,
+.settings-link-row:active {
+  background: var(--color-bg);
 }
 
-.settings-action-sub {
-  font-size: 0.78rem;
+.settings-link-chevron {
+  flex-shrink: 0;
   color: var(--color-text-secondary);
+  display: inline-flex;
+  align-items: center;
 }
 
-.settings-danger > span:first-child { color: var(--color-danger); }
+.settings-danger .settings-item-label { color: var(--color-danger); }
+.settings-danger .settings-link-chevron { color: var(--color-danger); opacity: 0.6; }
 
-.settings-confirm-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.4rem;
+.settings-confirm-block {
+  padding: 0.85rem;
 }
 
 /* ==================== Streak chip ==================== */
