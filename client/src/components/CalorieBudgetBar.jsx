@@ -51,9 +51,9 @@ export default function CalorieBudgetBar({ consumed, goal, macros, macroGoals })
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: '0.75rem' }}>
-        <span style={{ fontWeight: 600 }}>{consumed.toLocaleString()} cal</span>
-        <span style={{ color: isOver ? 'var(--color-danger)' : 'var(--color-text-secondary)', fontSize: '0.7rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: '0.85rem' }}>
+        <span style={{ fontWeight: 700 }}>{consumed.toLocaleString()} cal</span>
+        <span style={{ color: isOver ? 'var(--color-danger)' : 'var(--color-text-secondary)', fontSize: '0.78rem', fontWeight: 500 }}>
           {isOver ? `${(consumed - goal).toLocaleString()} over` : `${remaining.toLocaleString()} left`} / {goal.toLocaleString()}
         </span>
       </div>

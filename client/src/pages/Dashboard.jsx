@@ -239,10 +239,10 @@ export default function Dashboard() {
       {topFoods.length > 0 && (
         <div style={{ marginBottom: '0.85rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
-            <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--color-text-secondary)' }}>
+            <span style={{ fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--color-text-secondary)' }}>
               Tap to log instantly
             </span>
-            <Link to="/log" style={{ fontSize: '0.75rem' }}>More options →</Link>
+            <Link to="/log" style={{ fontSize: '0.85rem', fontWeight: 600, padding: '0.25rem 0.5rem', borderRadius: 8 }}>More options →</Link>
           </div>
           <div className="qls-chip-row">
             {topFoods.slice(0, 6).map(f => (
@@ -276,11 +276,7 @@ export default function Dashboard() {
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={showQuickActions ? 'rotated' : ''}><polyline points="6 9 12 15 18 9"/></svg>
       </button>
       {showQuickActions && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '0.45rem', marginBottom: '1rem' }}>
-          <Link to="/log" className="quick-action-tile">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
-            <span>Log</span>
-          </Link>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.5rem', marginBottom: '1rem' }}>
           <Link to="/reports" className="quick-action-tile">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
             <span>Reports</span>
