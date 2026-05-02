@@ -361,12 +361,49 @@ export default function MealLog() {
     }
   };
 
-  const handleItemKeyDown = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey && !e.metaKey && !e.ctrlKey) {
-      e.preventDefault();
-      addItem();
+  // Enter inside the meal-log form advances focus to the next visible input.
+  // On the last visible input it submits the form. Modifier+Enter or Shift+Enter
+  // pass through normally so users can still insert newlines in the notes textarea.
+  const handleFormEnter = (e) => {
+    if (e.key !== 'Enter' || e.shiftKey || e.metaKey || e.ctrlKey || e.altKey) return;
+    const target = e.target;
+    if (!target || target.tagName === 'TEXTAREA') return;
+    if (target.tagName !== 'INPUT' && target.tagName !== 'SELECT') return;
+    if (target.type === 'checkbox' || target.type === 'radio' || target.type === 'submit' || target.type === 'button') return;
+    const form = e.currentTarget;
+    const isReallyVisible = (el) => {
+      if (el.disabled || el.offsetParent === null) return false;
+      // Walk parents to the form. If any ancestor has zero height (e.g. a
+      // collapsed max-height:0 / overflow:hidden wrapper), treat as hidden.
+      for (let cur = el; cur && cur !== form; cur = cur.parentElement) {
+        const r = cur.getBoundingClientRect();
+        if (r.height < 1) return false;
+      }
+      return true;
+    };
+    const focusable = Array.from(form.querySelectorAll(
+      'input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="submit"]):not([type="button"]), select, textarea'
+    )).filter(isReallyVisible);
+    const i = focusable.indexOf(target);
+    if (i === -1) return;
+    e.preventDefault();
+    if (i < focusable.length - 1) {
+      const next = focusable[i + 1];
+      next.focus();
+      if (typeof next.select === 'function' && next.tagName === 'INPUT') {
+        // Select existing value so user can overwrite quickly
+        try { next.select(); } catch {}
+      }
+    } else {
+      // Last field — submit
+      if (typeof form.requestSubmit === 'function') {
+        form.requestSubmit();
+      } else {
+        form.submit();
+      }
     }
   };
+
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -587,7 +624,7 @@ export default function MealLog() {
         />
       )}
 
-      <form onSubmit={handleSubmit} className="card meal-log-card">
+      <form onSubmit={handleSubmit} onKeyDown={handleFormEnter} className="card meal-log-card">
         {error && <div className="error-message">{error}</div>}
 
         <div className="form-group">
@@ -714,7 +751,6 @@ export default function MealLog() {
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              onKeyDown={handleItemKeyDown}
               placeholder="e.g. Grilled chicken salad"
               autoComplete="off"
             />
@@ -776,7 +812,6 @@ export default function MealLog() {
                   setQuantity(parseFloat((parseFloat(e.target.value) / baseCal).toFixed(1)));
                 }
               }}
-              onKeyDown={handleItemKeyDown}
               placeholder="e.g. 450"
               min="0"
               inputMode="numeric"
