@@ -421,6 +421,55 @@ Be practical with portions — estimate realistic serving sizes from what's visi
   return JSON.parse(match[0]);
 }
 
+// Quick AI moderation: is this image a safe-for-work photo of food / drink /
+// food packaging? Returns boolean. Used to filter user-uploaded OFF images
+// before showing them in the food search UI.
+async function checkImageIsFood(base64Image) {
+  const config = getGenAIConfig();
+  const prompt = `Look at this image. Reply with EXACTLY one word.\n\nReply YES only if ALL of these are true:\n- The image clearly shows food, beverage, ingredients, or food packaging/labels\n- The image is appropriate (no nudity, gore, weapons, drugs, hateful symbols, or unrelated NSFW content)\n\nOtherwise reply NO.`;
+
+  const parseVerdict = (text) => /^\s*YES\b/i.test(String(text || ''));
+
+  if (config.provider === 'genai') {
+    const res = await fetch(`${config.apiBase}/openai/v1/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${config.apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: config.model,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${base64Image}` } },
+            { type: 'text', text: prompt },
+          ],
+        }],
+        max_tokens: 4,
+      }),
+    });
+    if (!res.ok) throw new Error(`GenAI vision error ${res.status}`);
+    const data = await res.json();
+    return parseVerdict(data.choices?.[0]?.message?.content);
+  }
+
+  const Anthropic = require('@anthropic-ai/sdk');
+  const client = new Anthropic();
+  const response = await client.messages.create({
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 4,
+    messages: [{
+      role: 'user',
+      content: [
+        { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: base64Image } },
+        { type: 'text', text: prompt },
+      ],
+    }],
+  });
+  return parseVerdict(response.content?.[0]?.text);
+}
+
 async function parseVoiceInput({ transcript, foodReference, defaultMealType }) {
   const refLines = foodReference && foodReference.length > 0
     ? foodReference.map(f => {
@@ -455,4 +504,4 @@ Rules:
   return JSON.parse(match[0]);
 }
 
-module.exports = { getSuggestions, chatWithAI, chatWithAIStream, analyzePhoto, parseVoiceInput, callLLMStream, getGenAIConfig };
+module.exports = { getSuggestions, chatWithAI, chatWithAIStream, analyzePhoto, checkImageIsFood, parseVoiceInput, callLLMStream, getGenAIConfig };

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import api from '../api/client';
 import { searchOFF, mergeResults, searchFoodsCombined } from '../api/foodSearch';
+import { isCachedSafe, verifyImageSafe } from '../api/imageSafety';
 
 export default function FoodSearch({ onSelect, onQuickAdd }) {
   const [query, setQuery] = useState('');
@@ -199,11 +200,32 @@ export default function FoodSearch({ onSelect, onQuickAdd }) {
 }
 
 export function FoodThumb({ food, size = 36 }) {
+  const url = food?.image_url || null;
+  // Gate image display behind an AI safety check. Show letter-avatar by
+  // default; swap to image only after the URL is verified safe.
+  const [verdict, setVerdict] = useState(() => {
+    if (!url) return 'none';
+    return isCachedSafe(url) ? 'safe' : 'pending';
+  });
   const [errored, setErrored] = useState(false);
-  if (food?.image_url && !errored) {
+
+  useEffect(() => {
+    setErrored(false);
+    if (!url) { setVerdict('none'); return; }
+    if (isCachedSafe(url)) { setVerdict('safe'); return; }
+    setVerdict('pending');
+    let cancelled = false;
+    verifyImageSafe(url).then(safe => {
+      if (cancelled) return;
+      setVerdict(safe ? 'safe' : 'unsafe');
+    });
+    return () => { cancelled = true; };
+  }, [url]);
+
+  if (verdict === 'safe' && url && !errored) {
     return (
       <img
-        src={food.image_url}
+        src={url}
         alt=""
         loading="lazy"
         onError={() => setErrored(true)}
@@ -214,7 +236,7 @@ export function FoodThumb({ food, size = 36 }) {
       />
     );
   }
-  // Fallback: small letter avatar (first letter of name on a tinted background)
+  // Letter-avatar fallback (also used while pending and for unsafe content)
   const letter = (food?.name || '?').trim().charAt(0).toUpperCase();
   return (
     <div
