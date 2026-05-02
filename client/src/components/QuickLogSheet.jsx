@@ -156,8 +156,6 @@ export default function QuickLogSheet({ open, onClose }) {
   const logMeal = useMutation({
     mutationFn: async (payload) => {
       const responses = await Promise.all(fanOutPosts(payload));
-      // Capture meal IDs (only the self-target one to undo, since shared
-      // viewers can't be unposted from one user's session)
       const ids = responses.map(r => r?.data?.id).filter(Boolean);
       return { payload, ids };
     },
@@ -167,8 +165,6 @@ export default function QuickLogSheet({ open, onClose }) {
       window.dispatchEvent(new CustomEvent('meal-logged-toast', {
         detail: { name: payload.name, calories: payload.calories, ids },
       }));
-      setLogged(true);
-      setTimeout(() => { onClose(); }, 700);
     },
     onError: (err) => setError(err.response?.data?.error || 'Failed to log'),
   });
@@ -205,8 +201,6 @@ export default function QuickLogSheet({ open, onClose }) {
       window.dispatchEvent(new CustomEvent('meal-logged-toast', {
         detail: { name, calories: totalCal, ids },
       }));
-      setLogged(true);
-      setTimeout(() => { onClose(); }, 800);
     },
     onError: (err) => setError(err.response?.data?.error || 'Failed to log'),
   });
@@ -248,8 +242,6 @@ export default function QuickLogSheet({ open, onClose }) {
       window.dispatchEvent(new CustomEvent('meal-logged-toast', {
         detail: { name, calories: totalCal, ids },
       }));
-      setLogged(true);
-      setTimeout(() => { onClose(); }, 700);
     },
   });
 
@@ -267,17 +259,19 @@ export default function QuickLogSheet({ open, onClose }) {
   };
 
   const handleTopFoodLog = (f) => {
-    if (logMeal.isPending) return;
     if (!targetingValid) {
       setError('Pick at least one person to log for');
       return;
     }
+    // Fire mutation in the background; close the sheet immediately for snappy UX.
+    // Toast confirms the log when the request lands.
     logMeal.mutate({
       meal_type: mealType,
       name: f.name,
       calories: f.avg_calories,
       logged_at: nowLocalISO(),
     });
+    onClose();
   };
 
   const handleConfirmLog = () => {
@@ -300,6 +294,7 @@ export default function QuickLogSheet({ open, onClose }) {
       carbs_g: selected.baseCarbs != null ? Math.round(selected.baseCarbs * quantity * 10) / 10 : undefined,
       fat_g: selected.baseFat != null ? Math.round(selected.baseFat * quantity * 10) / 10 : undefined,
     });
+    onClose();
   };
 
   const handleDescribe = async () => {
@@ -381,13 +376,13 @@ export default function QuickLogSheet({ open, onClose }) {
                 <button
                   className="qls-suggestion"
                   onClick={() => {
-                    setMealType(suggestion.meal_type);
                     logMeal.mutate({
                       meal_type: suggestion.meal_type,
                       name: suggestion.name,
                       calories: suggestion.calories,
                       logged_at: nowLocalISO(),
                     });
+                    onClose();
                   }}
                   disabled={isBusy}
                 >
@@ -598,8 +593,7 @@ export default function QuickLogSheet({ open, onClose }) {
                           <button
                             key={m.id}
                             className="qls-chip qls-chip-saved"
-                            onClick={() => logTemplate.mutate(m)}
-                            disabled={logTemplate.isPending}
+                            onClick={() => { logTemplate.mutate(m); onClose(); }}
                           >
                             {m.is_template && (
                               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 3, opacity: 0.7 }}>

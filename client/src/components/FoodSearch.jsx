@@ -1,68 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import api from '../api/client';
-
-const OFF_BASE = 'https://world.openfoodfacts.org/cgi/search.pl';
-
-function titleCase(str) {
-  if (!str) return '';
-  return str.toLowerCase().replace(/(?:^|\s|[-/])\w/g, (c) => c.toUpperCase());
-}
-
-async function searchOFF(query) {
-  try {
-    const params = new URLSearchParams({
-      search_terms: query,
-      json: '1',
-      page_size: '50',
-      search_simple: '1',
-      action: 'process',
-      fields: 'product_name,brands,nutriments,serving_size,code',
-    });
-    const resp = await fetch(`${OFF_BASE}?${params}`);
-    if (!resp.ok) return [];
-    const data = await resp.json();
-    if (!data.products) return [];
-    return data.products
-      .map((p) => {
-        if (!p.product_name) return null;
-        const calServing = p.nutriments?.['energy-kcal_serving'];
-        const cal100g = p.nutriments?.['energy-kcal_100g'];
-        const calories = calServing ? Math.round(calServing) : cal100g ? Math.round(cal100g) : null;
-        if (!calories || calories <= 0 || calories > 3000) return null;
-        const servingLabel = calServing && p.serving_size
-          ? p.serving_size
-          : cal100g ? 'per 100g' : '1 serving';
-        return {
-          id: `off-${p.code}`,
-          name: titleCase(p.product_name),
-          brand: p.brands || null,
-          calories_per_serving: calories,
-          serving_size: servingLabel,
-          source: 'off',
-        };
-      })
-      .filter(Boolean);
-  } catch {
-    return [];
-  }
-}
-
-function mergeResults(localRes, offResults) {
-  const seen = new Set();
-  const merged = [...localRes];
-  let brandedCount = 0;
-  for (const item of offResults) {
-    if (item.brand && brandedCount < 15) {
-      const key = `${item.name.toLowerCase()}|${item.brand.toLowerCase()}`;
-      if (!seen.has(key)) {
-        seen.add(key);
-        merged.push(item);
-        brandedCount++;
-      }
-    }
-  }
-  return merged;
-}
+import { searchOFF, mergeResults } from '../api/foodSearch';
 
 export default function FoodSearch({ onSelect, onQuickAdd }) {
   const [query, setQuery] = useState('');
@@ -87,11 +25,9 @@ export default function FoodSearch({ onSelect, onQuickAdd }) {
 
     const timer = setTimeout(async () => {
       try {
-        // Run local DB and Open Food Facts searches in parallel
         const localPromise = api.get('/foods', { params: { q: query } }).then((r) => r.data);
         const offPromise = searchOFF(query);
 
-        // Show local results as soon as they arrive
         const localRes = await localPromise;
         if (searchId.current !== currentSearch) return;
 
@@ -100,7 +36,6 @@ export default function FoodSearch({ onSelect, onQuickAdd }) {
           setOpen(true);
         }
 
-        // Merge in branded results when they arrive
         const offResults = await offPromise;
         if (searchId.current !== currentSearch) return;
 
@@ -209,11 +144,12 @@ export default function FoodSearch({ onSelect, onQuickAdd }) {
               <button
                 onClick={() => handleSelect(food)}
                 style={{
-                  flex: 1, minWidth: 0, display: 'flex', alignItems: 'center',
+                  flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: '0.6rem',
                   background: 'none', border: 'none', padding: 0, cursor: 'pointer',
                   textAlign: 'left', font: 'inherit', color: 'inherit',
                 }}
               >
+                <FoodThumb food={food} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 500, fontSize: '0.85rem' }}>
                     {food.name}
@@ -241,7 +177,7 @@ export default function FoodSearch({ onSelect, onQuickAdd }) {
                 title={food.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
                 className={`food-fav-btn${food.isFavorite ? ' active' : ''}`}
               >
-                {food.isFavorite ? '\u2605' : '\u2606'}
+                {food.isFavorite ? '★' : '☆'}
               </button>
               {onQuickAdd && (
                 <button
@@ -269,6 +205,40 @@ export default function FoodSearch({ onSelect, onQuickAdd }) {
           No results found for &ldquo;{query}&rdquo;
         </div>
       )}
+    </div>
+  );
+}
+
+export function FoodThumb({ food, size = 36 }) {
+  const [errored, setErrored] = useState(false);
+  if (food?.image_url && !errored) {
+    return (
+      <img
+        src={food.image_url}
+        alt=""
+        loading="lazy"
+        onError={() => setErrored(true)}
+        style={{
+          width: size, height: size, borderRadius: 8, objectFit: 'cover',
+          flexShrink: 0, background: 'var(--color-border)',
+        }}
+      />
+    );
+  }
+  // Fallback: small letter avatar (first letter of name on a tinted background)
+  const letter = (food?.name || '?').trim().charAt(0).toUpperCase();
+  return (
+    <div
+      aria-hidden="true"
+      style={{
+        width: size, height: size, borderRadius: 8, flexShrink: 0,
+        background: 'color-mix(in srgb, var(--color-primary) 12%, var(--color-bg))',
+        color: 'var(--color-primary)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontWeight: 700, fontSize: size * 0.42,
+      }}
+    >
+      {letter}
     </div>
   );
 }
