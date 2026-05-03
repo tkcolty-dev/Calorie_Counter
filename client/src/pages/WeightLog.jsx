@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../api/client';
 import LineChart from '../components/charts/LineChart';
@@ -6,11 +7,40 @@ import BackHeader from '../components/BackHeader';
 
 const today = new Date().toISOString().split('T')[0];
 
+function readShareWeight() {
+  try {
+    const raw = localStorage.getItem('share-weight');
+    return raw === '1' || raw === 'true';
+  } catch { return false; }
+}
+
 export default function WeightLog() {
   const [weight, setWeight] = useState('');
   const [logDate, setLogDate] = useState(today);
   const [notes, setNotes] = useState('');
   const queryClient = useQueryClient();
+
+  // Re-render when the share-weight flag changes (e.g. user toggles it
+  // in Settings on another tab, or the boot-time sync flips it).
+  const [shareWeightOn, setShareWeightOn] = useState(readShareWeight);
+  useEffect(() => {
+    const onChange = () => setShareWeightOn(readShareWeight());
+    window.addEventListener('home-display-changed', onChange);
+    window.addEventListener('storage', onChange);
+    return () => {
+      window.removeEventListener('home-display-changed', onChange);
+      window.removeEventListener('storage', onChange);
+    };
+  }, []);
+
+  // Reuse the cached ['sharing'] query (already polled by useNewShares /
+  // the Sharing page) so we don't fire an extra request just for the count.
+  const { data: sharingData } = useQuery({
+    queryKey: ['sharing'],
+    queryFn: () => api.get('/sharing').then(r => r.data),
+    staleTime: 1000 * 30,
+  });
+  const viewerCount = (sharingData?.sharing || []).filter(s => s.status === 'accepted').length;
 
   const { data: entries = [], isLoading } = useQuery({
     queryKey: ['weight'],
@@ -64,6 +94,68 @@ export default function WeightLog() {
   return (
     <div>
       <BackHeader title="Weight Log" subtitle="Track your weight over time" />
+
+      <div
+        className="card"
+        style={{
+          marginBottom: '1rem',
+          padding: '0.7rem 0.85rem',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.7rem',
+          background: shareWeightOn ? 'rgba(34, 197, 94, 0.08)' : 'var(--color-surface)',
+          border: `1px solid ${shareWeightOn ? 'rgba(34, 197, 94, 0.35)' : 'var(--color-border)'}`,
+        }}
+      >
+        <div
+          aria-hidden
+          style={{
+            width: 30,
+            height: 30,
+            borderRadius: '50%',
+            background: shareWeightOn ? '#16a34a' : 'var(--color-text-secondary)',
+            color: '#fff',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+          }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+            {shareWeightOn ? (
+              <>
+                <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+              </>
+            ) : (
+              <>
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </>
+            )}
+          </svg>
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>
+            {shareWeightOn
+              ? (viewerCount > 0
+                  ? `Sharing on · ${viewerCount} ${viewerCount === 1 ? 'person' : 'people'} can see this`
+                  : 'Sharing on · nobody in your group yet')
+              : 'Private · only you can see this'}
+          </div>
+          <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginTop: 1 }}>
+            {shareWeightOn
+              ? 'Your weight chart, history, and progress are visible to your sharing group.'
+              : 'Turn on "Share my weight" in Settings to share with your group.'}
+          </div>
+        </div>
+        <Link
+          to="/settings"
+          className="btn btn-secondary"
+          style={{ padding: '0.3rem 0.65rem', fontSize: '0.75rem', flexShrink: 0, textDecoration: 'none' }}
+        >
+          {shareWeightOn ? 'Manage' : 'Enable'}
+        </Link>
+      </div>
 
       {sortedByDate.length >= 2 && (
         <div className="card" style={{ marginBottom: '1rem' }}>

@@ -807,67 +807,130 @@ function SharedWeightChart({ userId, username, summary }) {
 
   const entries = data?.entries || [];
   const target = data?.target_weight ?? summary?.target_weight ?? null;
-  const chartData = entries.map(e => ({
+
+  // Sort ASC by date for stats; the chart uses the same ordering.
+  const sortedAsc = [...entries].sort((a, b) => {
+    const da = typeof a.logged_date === 'string' ? a.logged_date.split('T')[0] : a.logged_date;
+    const db = typeof b.logged_date === 'string' ? b.logged_date.split('T')[0] : b.logged_date;
+    return String(da).localeCompare(String(db));
+  });
+  const sortedDesc = [...sortedAsc].reverse();
+
+  const chartData = sortedAsc.map(e => ({
     weight_lbs: e.weight_lbs,
     label: new Date(
       (typeof e.logged_date === 'string' ? e.logged_date.split('T')[0] : e.logged_date) + 'T12:00:00'
     ).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
   }));
 
-  const cur = summary?.current_weight ?? null;
-  const lbsToGoal = summary?.lbs_to_goal ?? null;
-  const delta = summary?.delta_since_last ?? null;
+  const startWeight = sortedAsc.length > 0 ? parseFloat(sortedAsc[0].weight_lbs) : null;
+  const currentWeight = sortedAsc.length > 0 ? parseFloat(sortedAsc[sortedAsc.length - 1].weight_lbs) : null;
+  const totalChange = startWeight != null && currentWeight != null ? currentWeight - startWeight : null;
+  const toTarget = target != null && currentWeight != null ? currentWeight - target : null;
+
+  if (isLoading && entries.length === 0) {
+    return (
+      <div className="shared-weight-chart">
+        <div style={{ textAlign: 'center', padding: '1rem', color: 'var(--color-text-secondary)', fontSize: '0.85rem' }}>
+          Loading {username}'s history…
+        </div>
+      </div>
+    );
+  }
+
+  if (entries.length === 0) {
+    return (
+      <div className="shared-weight-chart">
+        <div style={{ textAlign: 'center', padding: '1rem', color: 'var(--color-text-secondary)', fontSize: '0.85rem' }}>
+          {username} hasn't logged any weight yet.
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="shared-weight-chart">
-      <div className="shared-weight-stats">
-        <div>
-          <div className="shared-weight-stat-label">Current</div>
-          <div className="shared-weight-stat-val">
-            {cur != null ? cur.toFixed(1) : '—'} <span>lbs</span>
+      {sortedAsc.length >= 2 && (
+        <div className="card" style={{ marginBottom: '1rem' }}>
+          <h2 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.75rem' }}>Progress</h2>
+          <div style={{ display: 'grid', gridTemplateColumns: target ? 'repeat(3, 1fr)' : 'repeat(2, 1fr)', gap: '0.75rem', textAlign: 'center' }}>
+            <div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginBottom: 2 }}>Starting</div>
+              <div style={{ fontSize: '1.25rem', fontWeight: 700 }}>{startWeight} <span style={{ fontSize: '0.75rem', fontWeight: 400 }}>lbs</span></div>
+            </div>
+            <div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginBottom: 2 }}>Change</div>
+              <div style={{
+                fontSize: '1.25rem',
+                fontWeight: 700,
+                color: totalChange < 0 ? 'var(--color-success, #16a34a)' : totalChange > 0 ? 'var(--color-danger, #dc2626)' : 'var(--color-text)',
+              }}>
+                {totalChange > 0 ? '+' : ''}{totalChange.toFixed(1)} <span style={{ fontSize: '0.75rem', fontWeight: 400 }}>lbs</span>
+              </div>
+              <div style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)' }}>
+                {totalChange < 0 ? `${Math.abs(totalChange).toFixed(1)} lbs lost` : totalChange > 0 ? `${totalChange.toFixed(1)} lbs gained` : 'No change'}
+              </div>
+            </div>
+            {target != null && (
+              <div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginBottom: 2 }}>To Goal</div>
+                <div style={{
+                  fontSize: '1.25rem',
+                  fontWeight: 700,
+                  color: toTarget <= 0 ? 'var(--color-success, #16a34a)' : 'var(--color-text-secondary)',
+                }}>
+                  {toTarget <= 0 ? 'Reached!' : `${toTarget.toFixed(1)}`} {toTarget > 0 && <span style={{ fontSize: '0.75rem', fontWeight: 400 }}>lbs left</span>}
+                </div>
+                <div style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)' }}>
+                  Target: {target} lbs
+                </div>
+              </div>
+            )}
           </div>
         </div>
-        {target != null && (
-          <div>
-            <div className="shared-weight-stat-label">Goal</div>
-            <div className="shared-weight-stat-val">
-              {target.toFixed(1)} <span>lbs</span>
-            </div>
-          </div>
-        )}
-        {lbsToGoal != null && (
-          <div>
-            <div className="shared-weight-stat-label">To go</div>
-            <div className={`shared-weight-stat-val ${lbsToGoal <= 0 ? 'positive' : 'neutral'}`}>
-              {lbsToGoal <= 0 ? 'Reached' : `${lbsToGoal.toFixed(1)} lbs`}
-            </div>
-          </div>
-        )}
-        {delta != null && (
-          <div>
-            <div className="shared-weight-stat-label">Last change</div>
-            <div className={`shared-weight-stat-val ${delta < 0 ? 'positive' : delta > 0 ? 'negative' : 'neutral'}`}>
-              {delta > 0 ? '+' : ''}{delta.toFixed(1)} <span>lbs</span>
-            </div>
-          </div>
-        )}
-      </div>
+      )}
 
-      {isLoading ? (
-        <div style={{ textAlign: 'center', padding: '1rem', color: 'var(--color-text-secondary)', fontSize: '0.85rem' }}>Loading {username}'s history…</div>
-      ) : chartData.length < 2 ? (
-        <div style={{ textAlign: 'center', padding: '1rem', color: 'var(--color-text-secondary)', fontSize: '0.85rem' }}>
-          {chartData.length === 0 ? `${username} hasn't logged any weight yet.` : 'Need at least two entries to show a trend.'}
+      {chartData.length > 1 ? (
+        <div className="card" style={{ marginBottom: '1rem' }}>
+          <h2 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.5rem' }}>Trend</h2>
+          <LineChart
+            data={chartData}
+            labelKey="label"
+            valueKey="weight_lbs"
+            lineColor="var(--color-primary)"
+            targetValue={target ?? undefined}
+          />
+          {target != null && (
+            <p style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginTop: '0.4rem' }}>
+              Target: {target} lbs
+            </p>
+          )}
         </div>
       ) : (
-        <LineChart
-          data={chartData}
-          labelKey="label"
-          valueKey="weight_lbs"
-          lineColor="var(--color-primary)"
-          targetValue={target ?? undefined}
-        />
+        <div className="card" style={{ marginBottom: '1rem', textAlign: 'center', color: 'var(--color-text-secondary)', fontSize: '0.85rem' }}>
+          Need at least two entries to show a trend.
+        </div>
       )}
+
+      <div className="card">
+        <h2 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.5rem' }}>History</h2>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+          {sortedDesc.map(e => {
+            const dateStr = typeof e.logged_date === 'string' ? e.logged_date.split('T')[0] : e.logged_date;
+            return (
+              <div key={e.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.4rem 0', borderBottom: '1px solid var(--color-border)' }}>
+                <div>
+                  <span style={{ fontWeight: 600 }}>{parseFloat(e.weight_lbs)} lbs</span>
+                  <span style={{ marginLeft: '0.5rem', fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
+                    {new Date(dateStr + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
+                  </span>
+                  {e.notes && <span style={{ marginLeft: '0.4rem', fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>— {e.notes}</span>}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }
