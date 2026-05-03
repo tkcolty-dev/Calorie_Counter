@@ -11,18 +11,20 @@ router.get('/', async (req, res) => {
   try {
     const [sharing, sharedWithMe] = await Promise.all([
       pool.query(
-        `SELECT s.id, s.viewer_id, u.username as viewer_username, s.share_planned, s.share_weight, ss.status, s.created_at
+        `SELECT s.id, s.viewer_id, u.username as viewer_username, s.share_planned, swo.share_weight, ss.status, s.created_at
          FROM shares s
          JOIN users u ON s.viewer_id = u.id
          LEFT JOIN share_status ss ON ss.share_id = s.id
+         LEFT JOIN share_weight_overrides swo ON swo.share_id = s.id
          WHERE s.owner_id = $1`,
         [req.userId]
       ),
       pool.query(
-        `SELECT s.id, s.owner_id, u.username as owner_username, s.share_planned, s.share_weight, ss.status, s.created_at
+        `SELECT s.id, s.owner_id, u.username as owner_username, s.share_planned, swo.share_weight, ss.status, s.created_at
          FROM shares s
          JOIN users u ON s.owner_id = u.id
          LEFT JOIN share_status ss ON ss.share_id = s.id
+         LEFT JOIN share_weight_overrides swo ON swo.share_id = s.id
          WHERE s.viewer_id = $1`,
         [req.userId]
       ),
@@ -73,10 +75,11 @@ router.get('/weight-summary', async (req, res) => {
   try {
     const result = await pool.query(
       `WITH viewable AS (
-         SELECT s.owner_id AS user_id, u.username, s.share_weight
+         SELECT s.owner_id AS user_id, u.username, swo.share_weight
          FROM shares s
          JOIN share_status ss ON ss.share_id = s.id
          JOIN users u ON u.id = s.owner_id
+         LEFT JOIN share_weight_overrides swo ON swo.share_id = s.id
          WHERE s.viewer_id = $1 AND ss.status = 'accepted'
        ),
        opted_in AS (
@@ -147,8 +150,10 @@ router.get('/:userId/weight-history', async (req, res) => {
     if (!ownerId) return res.status(400).json({ error: 'Invalid userId' });
     const days = Math.min(parseInt(req.query.days) || 90, 365);
     const accept = await pool.query(
-      `SELECT s.id, s.share_weight FROM shares s
+      `SELECT s.id, swo.share_weight
+       FROM shares s
        JOIN share_status ss ON ss.share_id = s.id
+       LEFT JOIN share_weight_overrides swo ON swo.share_id = s.id
        WHERE s.owner_id = $1 AND s.viewer_id = $2 AND ss.status = 'accepted'`,
       [ownerId, req.userId]
     );
@@ -374,34 +379,55 @@ router.patch('/:id/respond', async (req, res) => {
 });
 
 // Toggle share_planned / share_weight on/off (owner only). Either or
-// both can be sent in the same request.
+// both can be sent in the same request. share_planned lives on the
+// shares row; share_weight lives in the share_weight_overrides
+// satellite (null = revert to the owner's global default).
 router.patch('/:id', async (req, res) => {
   try {
-    const sets = [];
-    const params = [];
-    if (Object.prototype.hasOwnProperty.call(req.body, 'share_planned')) {
-      params.push(!!req.body.share_planned);
-      sets.push(`share_planned = $${params.length}`);
-    }
-    if (Object.prototype.hasOwnProperty.call(req.body, 'share_weight')) {
-      // Allow null (= "fall back to global") explicitly.
-      const v = req.body.share_weight;
-      params.push(v === null ? null : !!v);
-      sets.push(`share_weight = $${params.length}`);
-    }
-    if (sets.length === 0) {
+    const id = req.params.id;
+    const hasPlanned = Object.prototype.hasOwnProperty.call(req.body, 'share_planned');
+    const hasWeight = Object.prototype.hasOwnProperty.call(req.body, 'share_weight');
+    if (!hasPlanned && !hasWeight) {
       return res.status(400).json({ error: 'No updatable fields provided' });
     }
-    params.push(req.params.id, req.userId);
-    const idIdx = params.length - 1;
-    const ownerIdx = params.length;
-    const result = await pool.query(
-      `UPDATE shares SET ${sets.join(', ')} WHERE id = $${idIdx} AND owner_id = $${ownerIdx} RETURNING *`,
-      params
+
+    // Verify the requester actually owns this share before any writes.
+    const owned = await pool.query(
+      'SELECT id FROM shares WHERE id = $1 AND owner_id = $2',
+      [id, req.userId]
     );
-    if (result.rows.length === 0) {
+    if (owned.rows.length === 0) {
       return res.status(404).json({ error: 'Share not found' });
     }
+
+    if (hasPlanned) {
+      await pool.query(
+        'UPDATE shares SET share_planned = $1 WHERE id = $2 AND owner_id = $3',
+        [!!req.body.share_planned, id, req.userId]
+      );
+    }
+    if (hasWeight) {
+      const v = req.body.share_weight;
+      if (v === null) {
+        await pool.query('DELETE FROM share_weight_overrides WHERE share_id = $1', [id]);
+      } else {
+        await pool.query(
+          `INSERT INTO share_weight_overrides (share_id, share_weight, updated_at)
+             VALUES ($1, $2, NOW())
+           ON CONFLICT (share_id) DO UPDATE
+             SET share_weight = EXCLUDED.share_weight, updated_at = NOW()`,
+          [id, !!v]
+        );
+      }
+    }
+
+    const result = await pool.query(
+      `SELECT s.id, s.owner_id, s.viewer_id, s.share_planned, swo.share_weight, s.created_at
+       FROM shares s
+       LEFT JOIN share_weight_overrides swo ON swo.share_id = s.id
+       WHERE s.id = $1`,
+      [id]
+    );
     res.json(result.rows[0]);
   } catch (err) {
     console.error('Toggle share field error:', err);
@@ -412,8 +438,9 @@ router.patch('/:id', async (req, res) => {
 // Revoke access (either party can remove)
 router.delete('/:id', async (req, res) => {
   try {
-    // Delete status first (we own this table)
+    // Delete satellites first (we own those tables)
     await pool.query('DELETE FROM share_status WHERE share_id = $1', [req.params.id]);
+    await pool.query('DELETE FROM share_weight_overrides WHERE share_id = $1', [req.params.id]);
 
     const result = await pool.query(
       'DELETE FROM shares WHERE id = $1 AND (owner_id = $2 OR viewer_id = $2) RETURNING id',
