@@ -1,5 +1,5 @@
 // Bump this every deploy if you change SW behavior. Caches keyed off it.
-const CACHE_NAME = 'bitewise-v5';
+const CACHE_NAME = 'bitewise-v6';
 
 // Install: become active immediately, no preloading (saves users from a stale shell).
 self.addEventListener('install', () => {

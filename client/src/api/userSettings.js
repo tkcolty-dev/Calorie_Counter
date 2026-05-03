@@ -156,6 +156,21 @@ export async function syncSettingsFromServer() {
       const theme = lsRead('theme');
       if (theme) document.documentElement.setAttribute('data-theme', theme);
     }
+
+    // Backfill: push any localStorage values that aren't on the server yet.
+    // Catches users who toggled a setting before that key was patchable.
+    const backfill = {};
+    for (const key of PATCHABLE_KEYS) {
+      if (key in settings) continue;
+      if (key in pendingPatch) continue;
+      const raw = lsRead(key);
+      if (raw === null) continue;
+      const v = toServerValue(key, raw);
+      if (v !== null) backfill[key] = v;
+    }
+    if (Object.keys(backfill).length > 0) {
+      try { await api.patch('/user-settings', backfill); } catch {}
+    }
   } catch {
     // Likely 401 / offline — fall back to whatever's in localStorage.
   }
