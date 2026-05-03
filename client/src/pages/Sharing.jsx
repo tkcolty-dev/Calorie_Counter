@@ -162,6 +162,7 @@ export default function Sharing() {
   const [commentText, setCommentText] = useState('');
   const [addFoodMealType, setAddFoodMealType] = useState('snack');
   const commentsEndRef = useRef(null);
+  const commentsScrollRef = useRef(null);
   const queryClient = useQueryClient();
 
   const { data: sharingData, isLoading } = useQuery({
@@ -253,7 +254,10 @@ export default function Sharing() {
   });
 
   useEffect(() => {
-    commentsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    // Scroll only the chat container internally — not the page. Using
+    // scrollIntoView here would pull the whole window down to the chat.
+    const el = commentsScrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
   }, [commentsData?.comments?.length]);
 
   const addShare = useMutation({
@@ -732,7 +736,7 @@ export default function Sharing() {
                       {activeShareId && (
                         <div style={{ marginTop: '1rem', paddingTop: '0.75rem', borderTop: '1px solid var(--color-border)' }}>
                           <h3 style={{ fontSize: '0.9rem', fontWeight: 600, margin: '0 0 0.4rem' }}>Chat</h3>
-                          <div className="share-chat-messages">
+                          <div className="share-chat-messages" ref={commentsScrollRef}>
                             {(!commentsData?.comments || commentsData.comments.length === 0) ? (
                               <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.85rem', margin: 'auto', textAlign: 'center' }}>
                                 No messages yet. Say hi!
