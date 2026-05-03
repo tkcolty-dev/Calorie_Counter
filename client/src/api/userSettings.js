@@ -19,6 +19,11 @@ const PATCHABLE_KEYS = new Set([
   'show-weekly-summary',
   'show-quick-actions-bar',
   'show-planner',
+  'compact-ui',
+  'large-text',
+  'share-weight',
+  'show-log-search',
+  'show-log-describe',
 ]);
 
 function lsRead(key) {

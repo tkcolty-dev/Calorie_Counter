@@ -167,7 +167,8 @@ export default function Sharing() {
   const { data: sharingData, isLoading } = useQuery({
     queryKey: ['sharing'],
     queryFn: () => api.get('/sharing').then(r => r.data),
-    staleTime: 1000 * 60 * 2,
+    staleTime: 1000 * 5,
+    refetchInterval: 5000,
   });
 
   // Today's calorie totals for every accepted-incoming share, all in one
@@ -175,7 +176,8 @@ export default function Sharing() {
   const { data: todayTotalsData } = useQuery({
     queryKey: ['sharing-today-totals', localToday()],
     queryFn: () => api.get('/sharing/today-totals', { params: { date: localToday() } }).then(r => r.data),
-    staleTime: 1000 * 60,
+    staleTime: 1000 * 5,
+    refetchInterval: 5000,
   });
 
   const totalsByUser = useMemo(() => {
@@ -190,7 +192,8 @@ export default function Sharing() {
   const { data: weightSummaryData } = useQuery({
     queryKey: ['sharing-weight-summary'],
     queryFn: () => api.get('/sharing/weight-summary').then(r => r.data),
-    staleTime: 1000 * 60 * 2,
+    staleTime: 1000 * 5,
+    refetchInterval: 5000,
   });
 
   const weightByUser = useMemo(() => {
@@ -227,14 +230,16 @@ export default function Sharing() {
     queryKey: ['shared-meals', expandedUserId, viewDate],
     queryFn: () => api.get(`/sharing/${expandedUserId}/meals`, { params: { date: viewDate } }).then(r => r.data),
     enabled: !!expandedUserId && !!canViewExpanded,
-    staleTime: 1000 * 30,
+    staleTime: 1000 * 5,
+    refetchInterval: 5000,
   });
 
   const { data: sharedPlanned } = useQuery({
     queryKey: ['shared-planned', expandedUserId, viewDate],
     queryFn: () => api.get(`/sharing/${expandedUserId}/planned-meals`, { params: { from: viewDate } }).then(r => r.data),
     enabled: !!expandedUserId && !!canViewExpanded && !!expandedMember?.incoming?.share_planned,
-    staleTime: 1000 * 30,
+    staleTime: 1000 * 5,
+    refetchInterval: 5000,
   });
 
   const activeShareId = expandedMember?.incoming?.id || null;
@@ -796,7 +801,8 @@ function SharedWeightChart({ userId, username, summary }) {
   const { data, isLoading } = useQuery({
     queryKey: ['sharing-weight-history', userId],
     queryFn: () => api.get(`/sharing/${userId}/weight-history`, { params: { days: 90 } }).then(r => r.data),
-    staleTime: 1000 * 60,
+    staleTime: 1000 * 5,
+    refetchInterval: 5000,
   });
 
   const entries = data?.entries || [];
