@@ -11,7 +11,7 @@ router.get('/', async (req, res) => {
   try {
     const [sharing, sharedWithMe] = await Promise.all([
       pool.query(
-        `SELECT s.id, s.viewer_id, u.username as viewer_username, s.share_planned, ss.status, s.created_at
+        `SELECT s.id, s.viewer_id, u.username as viewer_username, s.share_planned, s.share_weight, ss.status, s.created_at
          FROM shares s
          JOIN users u ON s.viewer_id = u.id
          LEFT JOIN share_status ss ON ss.share_id = s.id
@@ -19,7 +19,7 @@ router.get('/', async (req, res) => {
         [req.userId]
       ),
       pool.query(
-        `SELECT s.id, s.owner_id, u.username as owner_username, s.share_planned, ss.status, s.created_at
+        `SELECT s.id, s.owner_id, u.username as owner_username, s.share_planned, s.share_weight, ss.status, s.created_at
          FROM shares s
          JOIN users u ON s.owner_id = u.id
          LEFT JOIN share_status ss ON ss.share_id = s.id
@@ -73,17 +73,23 @@ router.get('/weight-summary', async (req, res) => {
   try {
     const result = await pool.query(
       `WITH viewable AS (
-         SELECT s.owner_id AS user_id, u.username
+         SELECT s.owner_id AS user_id, u.username, s.share_weight
          FROM shares s
          JOIN share_status ss ON ss.share_id = s.id
          JOIN users u ON u.id = s.owner_id
          WHERE s.viewer_id = $1 AND ss.status = 'accepted'
        ),
        opted_in AS (
+         -- Per-share override wins; NULL falls back to the owner's
+         -- global 'share-weight' setting.
          SELECT v.user_id, v.username
          FROM viewable v
          LEFT JOIN user_settings us ON us.user_id = v.user_id
-         WHERE COALESCE((us.settings->>'share-weight')::boolean, false) = true
+         WHERE COALESCE(
+           v.share_weight,
+           (us.settings->>'share-weight')::boolean,
+           false
+         ) = true
        ),
        latest AS (
          SELECT DISTINCT ON (user_id) user_id, weight_lbs, logged_date
@@ -141,18 +147,24 @@ router.get('/:userId/weight-history', async (req, res) => {
     if (!ownerId) return res.status(400).json({ error: 'Invalid userId' });
     const days = Math.min(parseInt(req.query.days) || 90, 365);
     const accept = await pool.query(
-      `SELECT s.id FROM shares s
+      `SELECT s.id, s.share_weight FROM shares s
        JOIN share_status ss ON ss.share_id = s.id
        WHERE s.owner_id = $1 AND s.viewer_id = $2 AND ss.status = 'accepted'`,
       [ownerId, req.userId]
     );
     if (accept.rows.length === 0) return res.status(403).json({ error: 'No accepted share' });
-    const opt = await pool.query(
-      `SELECT COALESCE((settings->>'share-weight')::boolean, false) AS share_weight
-       FROM user_settings WHERE user_id = $1`,
-      [ownerId]
-    );
-    if (!opt.rows[0]?.share_weight) return res.status(403).json({ error: 'Owner has not enabled weight sharing' });
+    // Per-share override wins; NULL falls back to global setting.
+    const perShare = accept.rows[0].share_weight;
+    let allowed = perShare;
+    if (allowed === null || allowed === undefined) {
+      const opt = await pool.query(
+        `SELECT COALESCE((settings->>'share-weight')::boolean, false) AS share_weight
+         FROM user_settings WHERE user_id = $1`,
+        [ownerId]
+      );
+      allowed = !!opt.rows[0]?.share_weight;
+    }
+    if (!allowed) return res.status(403).json({ error: 'Owner has not enabled weight sharing' });
     const target = await pool.query(
       `SELECT target_weight_lbs::float AS target FROM calorie_goals WHERE user_id = $1`,
       [ownerId]
@@ -361,20 +373,38 @@ router.patch('/:id/respond', async (req, res) => {
   }
 });
 
-// Toggle share_planned on/off (owner only)
+// Toggle share_planned / share_weight on/off (owner only). Either or
+// both can be sent in the same request.
 router.patch('/:id', async (req, res) => {
   try {
-    const { share_planned } = req.body;
+    const sets = [];
+    const params = [];
+    if (Object.prototype.hasOwnProperty.call(req.body, 'share_planned')) {
+      params.push(!!req.body.share_planned);
+      sets.push(`share_planned = $${params.length}`);
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body, 'share_weight')) {
+      // Allow null (= "fall back to global") explicitly.
+      const v = req.body.share_weight;
+      params.push(v === null ? null : !!v);
+      sets.push(`share_weight = $${params.length}`);
+    }
+    if (sets.length === 0) {
+      return res.status(400).json({ error: 'No updatable fields provided' });
+    }
+    params.push(req.params.id, req.userId);
+    const idIdx = params.length - 1;
+    const ownerIdx = params.length;
     const result = await pool.query(
-      'UPDATE shares SET share_planned = $1 WHERE id = $2 AND owner_id = $3 RETURNING *',
-      [!!share_planned, req.params.id, req.userId]
+      `UPDATE shares SET ${sets.join(', ')} WHERE id = $${idIdx} AND owner_id = $${ownerIdx} RETURNING *`,
+      params
     );
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Share not found' });
     }
     res.json(result.rows[0]);
   } catch (err) {
-    console.error('Toggle share_planned error:', err);
+    console.error('Toggle share field error:', err);
     res.status(500).json({ error: 'Server error' });
   }
 });

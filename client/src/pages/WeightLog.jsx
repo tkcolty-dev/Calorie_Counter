@@ -40,7 +40,16 @@ export default function WeightLog() {
     queryFn: () => api.get('/sharing').then(r => r.data),
     staleTime: 1000 * 30,
   });
-  const viewerCount = (sharingData?.sharing || []).filter(s => s.status === 'accepted').length;
+  // A viewer can see weight when (a) the share is accepted AND (b) the
+  // per-share share_weight resolves true — explicit true wins; null/
+  // undefined falls back to the global flag.
+  const viewerCount = (sharingData?.sharing || []).filter(s => {
+    if (s.status !== 'accepted') return false;
+    if (s.share_weight === true) return true;
+    if (s.share_weight === false) return false;
+    return shareWeightOn;
+  }).length;
+  const sharingToAnyone = viewerCount > 0;
 
   const { data: entries = [], isLoading } = useQuery({
     queryKey: ['weight'],
@@ -103,8 +112,8 @@ export default function WeightLog() {
           display: 'flex',
           alignItems: 'center',
           gap: '0.7rem',
-          background: shareWeightOn ? 'rgba(34, 197, 94, 0.08)' : 'var(--color-surface)',
-          border: `1px solid ${shareWeightOn ? 'rgba(34, 197, 94, 0.35)' : 'var(--color-border)'}`,
+          background: sharingToAnyone ? 'rgba(34, 197, 94, 0.08)' : 'var(--color-surface)',
+          border: `1px solid ${sharingToAnyone ? 'rgba(34, 197, 94, 0.35)' : 'var(--color-border)'}`,
         }}
       >
         <div
@@ -113,7 +122,7 @@ export default function WeightLog() {
             width: 30,
             height: 30,
             borderRadius: '50%',
-            background: shareWeightOn ? '#16a34a' : 'var(--color-text-secondary)',
+            background: sharingToAnyone ? '#16a34a' : 'var(--color-text-secondary)',
             color: '#fff',
             display: 'flex',
             alignItems: 'center',
@@ -122,7 +131,7 @@ export default function WeightLog() {
           }}
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-            {shareWeightOn ? (
+            {sharingToAnyone ? (
               <>
                 <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
                 <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
@@ -136,24 +145,26 @@ export default function WeightLog() {
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>
-            {shareWeightOn
-              ? (viewerCount > 0
-                  ? `Sharing on · ${viewerCount} ${viewerCount === 1 ? 'person' : 'people'} can see this`
-                  : 'Sharing on · nobody in your group yet')
-              : 'Private · only you can see this'}
+            {sharingToAnyone
+              ? `Sharing with ${viewerCount} ${viewerCount === 1 ? 'person' : 'people'}`
+              : (shareWeightOn
+                  ? 'Sharing on · nobody in your group yet'
+                  : 'Private · only you can see this')}
           </div>
           <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginTop: 1 }}>
-            {shareWeightOn
-              ? 'Your weight chart, history, and progress are visible to your sharing group.'
-              : 'Turn on "Share my weight" in Settings to share with your group.'}
+            {sharingToAnyone
+              ? 'Tap Manage to choose who can see your weight, or turn it off in Settings.'
+              : (shareWeightOn
+                  ? 'Invite friends in the Sharing tab to share with them.'
+                  : 'Turn on "Share my weight" in Settings, or share with specific people from the Sharing tab.')}
           </div>
         </div>
         <Link
-          to="/settings"
+          to={sharingToAnyone || shareWeightOn ? '/sharing' : '/settings'}
           className="btn btn-secondary"
           style={{ padding: '0.3rem 0.65rem', fontSize: '0.75rem', flexShrink: 0, textDecoration: 'none' }}
         >
-          {shareWeightOn ? 'Manage' : 'Enable'}
+          {sharingToAnyone || shareWeightOn ? 'Manage' : 'Enable'}
         </Link>
       </div>
 

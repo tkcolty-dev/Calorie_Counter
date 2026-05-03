@@ -165,6 +165,27 @@ export default function Sharing() {
   const commentsScrollRef = useRef(null);
   const queryClient = useQueryClient();
 
+  // Mirror the global share-weight flag (Settings → Privacy) so each
+  // per-share toggle reflects "checked" when the share is using the
+  // global default. Updates live when the user flips the global toggle
+  // in another tab or the boot-time sync flips it.
+  const [globalShareWeight, setGlobalShareWeight] = useState(() => {
+    try { const v = localStorage.getItem('share-weight'); return v === '1' || v === 'true'; }
+    catch { return false; }
+  });
+  useEffect(() => {
+    const onChange = () => {
+      try { const v = localStorage.getItem('share-weight'); setGlobalShareWeight(v === '1' || v === 'true'); }
+      catch {}
+    };
+    window.addEventListener('home-display-changed', onChange);
+    window.addEventListener('storage', onChange);
+    return () => {
+      window.removeEventListener('home-display-changed', onChange);
+      window.removeEventListener('storage', onChange);
+    };
+  }, []);
+
   const { data: sharingData, isLoading } = useQuery({
     queryKey: ['sharing'],
     queryFn: () => api.get('/sharing').then(r => r.data),
@@ -278,6 +299,14 @@ export default function Sharing() {
   const togglePlanned = useMutation({
     mutationFn: ({ id, share_planned }) => api.patch(`/sharing/${id}`, { share_planned }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['sharing'] }),
+  });
+
+  const toggleWeightShare = useMutation({
+    mutationFn: ({ id, share_weight }) => api.patch(`/sharing/${id}`, { share_weight }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sharing'] });
+      queryClient.invalidateQueries({ queryKey: ['sharing-weight-summary'] });
+    },
   });
 
   const respondShare = useMutation({
@@ -591,26 +620,60 @@ export default function Sharing() {
                         )
                       ) : (<>
 
-                      {/* Planned meals toggle (sharing direction back) */}
+                      {/* Per-person sharing toggles (sharing direction back) */}
                       {m.outgoing?.status === 'accepted' && (
-                        <label style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '0.4rem',
-                          fontSize: '0.78rem',
-                          color: 'var(--color-text-secondary)',
-                          cursor: 'pointer',
-                          userSelect: 'none',
-                          marginBottom: '0.75rem',
-                        }}>
-                          <input
-                            type="checkbox"
-                            checked={!!m.outgoing.share_planned}
-                            onChange={() => togglePlanned.mutate({ id: m.outgoing.id, share_planned: !m.outgoing.share_planned })}
-                            style={{ accentColor: 'var(--color-primary)' }}
-                          />
-                          Share my planned meals with {m.username}
-                        </label>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', marginBottom: '0.75rem' }}>
+                          <label style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.4rem',
+                            fontSize: '0.78rem',
+                            color: 'var(--color-text-secondary)',
+                            cursor: 'pointer',
+                            userSelect: 'none',
+                          }}>
+                            <input
+                              type="checkbox"
+                              checked={!!m.outgoing.share_planned}
+                              onChange={() => togglePlanned.mutate({ id: m.outgoing.id, share_planned: !m.outgoing.share_planned })}
+                              style={{ accentColor: 'var(--color-primary)' }}
+                            />
+                            Share my planned meals with {m.username}
+                          </label>
+                          {(() => {
+                            const perShare = m.outgoing.share_weight;
+                            const effective = perShare === true || perShare === false
+                              ? perShare
+                              : globalShareWeight;
+                            const overridden = perShare === true || perShare === false;
+                            return (
+                              <label style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.4rem',
+                                fontSize: '0.78rem',
+                                color: 'var(--color-text-secondary)',
+                                cursor: 'pointer',
+                                userSelect: 'none',
+                              }}>
+                                <input
+                                  type="checkbox"
+                                  checked={effective}
+                                  onChange={(e) => toggleWeightShare.mutate({ id: m.outgoing.id, share_weight: e.target.checked })}
+                                  style={{ accentColor: 'var(--color-primary)' }}
+                                />
+                                <span>
+                                  Share my weight with {m.username}
+                                  {!overridden && (
+                                    <span style={{ marginLeft: '0.3rem', fontSize: '0.7rem', opacity: 0.8 }}>
+                                      (using global default)
+                                    </span>
+                                  )}
+                                </span>
+                              </label>
+                            );
+                          })()}
+                        </div>
                       )}
 
                       {/* Date navigation */}
