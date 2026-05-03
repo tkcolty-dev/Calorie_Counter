@@ -247,6 +247,11 @@ export default function Dashboard() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['meals'] }),
   });
 
+  const editMeal = useMutation({
+    mutationFn: ({ id, updates }) => api.put(`/meals/${id}`, updates),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['meals'] }),
+  });
+
   const clearToday = useMutation({
     mutationFn: () => api.delete('/meals/today', { params: { today } }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['meals'] }),
@@ -480,7 +485,11 @@ export default function Dashboard() {
               </Link>
             </div>
           ) : (
-            <MealTable meals={meals} onDelete={(id) => deleteMeal.mutate(id)} />
+            <MealTable
+              meals={meals}
+              onDelete={(id) => deleteMeal.mutate(id)}
+              onEdit={(id, updates) => editMeal.mutate({ id, updates })}
+            />
           )}
         </div>
       </CollapsibleSection>

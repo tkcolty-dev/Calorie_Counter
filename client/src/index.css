@@ -588,6 +588,85 @@ input[type="number"] {
   background: color-mix(in srgb, var(--color-danger) 10%, transparent);
 }
 
+.meal-table-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.1rem;
+  flex-shrink: 0;
+}
+
+.meal-table-row-edit {
+  background: none;
+  border: none;
+  color: var(--color-text-secondary);
+  padding: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  cursor: pointer;
+  opacity: 0.55;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: opacity 0.15s, color 0.15s, background 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.meal-table-row-edit:hover,
+.meal-table-row-edit:active {
+  opacity: 1;
+  color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+}
+
+.meal-table-item-editing {
+  flex-direction: column;
+  align-items: stretch;
+  padding: 0.6rem 0.85rem;
+  background: color-mix(in srgb, var(--color-primary) 4%, var(--color-surface));
+}
+
+.meal-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  width: 100%;
+}
+
+.meal-edit-row {
+  display: flex;
+  gap: 0.4rem;
+  align-items: stretch;
+}
+
+.meal-edit-input {
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  font-size: 0.9rem;
+  min-width: 0;
+}
+
+.meal-edit-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 20%, transparent);
+}
+
+.meal-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.4rem;
+  margin-top: 0.1rem;
+}
+
+.meal-edit-btn {
+  padding: 0.4rem 0.85rem;
+  font-size: 0.82rem;
+}
+
 /* ==================== Chat UI ==================== */
 .chat-container {
   display: flex;
